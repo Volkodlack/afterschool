@@ -23,6 +23,11 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.graphics.Color;
+import android.view.WindowManager.LayoutParams;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
@@ -57,6 +62,7 @@ public class MainActivity extends ComponentActivity {
     private static final String START_URL = "https://appassets.androidplatform.net/assets/index.html";
 
     private WebView web;
+    private FrameLayout root;
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
     private Uri photoUri;
@@ -103,9 +109,23 @@ public class MainActivity extends ComponentActivity {
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
+        if (Build.VERSION.SDK_INT >= 28) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= 30
+                    ? LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    : LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF7EC8F5);
         web = new WebView(this);
         web.setBackgroundColor(0xFF7EC8F5);
-        setContentView(web);
+        root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(root);
+        // keep the page out of camera cutouts / rounded corners / visible system bars on every device
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets i = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(i.left, i.top, i.right, i.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -328,6 +348,18 @@ public class MainActivity extends ComponentActivity {
         @JavascriptInterface
         public void stopSpeak() {
             if (tts != null) tts.stop();
+        }
+
+        @JavascriptInterface
+        public void setBackground(String color) {
+            runOnUiThread(() -> {
+                try {
+                    int c = Color.parseColor(color);
+                    root.setBackgroundColor(c);
+                    web.setBackgroundColor(c);
+                } catch (Exception ignored) {
+                }
+            });
         }
 
         @JavascriptInterface

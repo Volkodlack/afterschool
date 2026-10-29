@@ -168,8 +168,8 @@
         <button class="pix-btn small gold" data-a="listen">${Pixel.svg('speaker')} Écouter</button>
         <button class="pix-btn small gold" data-a="echo">${Pixel.svg('mic')} Lis après moi</button>
         <button class="pix-btn small" data-a="speed" title="Vitesse">${Pixel.svg('turtle')}</button>
-        <button class="pix-btn small ${help === 'syl' ? 'on' : ''}" data-a="syl"><span><span style="color:#cfe0ff">sy</span><span style="color:#ffd0d0">lla</span>bes</span></button>
-        <button class="pix-btn small ${help === 'snd' ? 'on' : ''}" data-a="snd"><span>s<span style="color:#9ff5a8;text-decoration:underline">on</span>s c<span style="color:#ffd27a;text-decoration:underline">om</span>plexes</span></button>
+        <button class="pix-btn small ${help === 'syl' ? 'on' : ''}" data-a="syl">Syllabes</button>
+        <button class="pix-btn small ${help === 'snd' ? 'on' : ''}" data-a="snd">Sons complexes</button>
         <button class="pix-btn small" data-a="ruler">${Pixel.svg('ruler')} Règle</button>
         <button class="pix-btn small" data-a="minus">A−</button>
         <button class="pix-btn small" data-a="plus">A+</button>
