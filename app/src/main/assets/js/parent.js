@@ -160,8 +160,8 @@
         return;
       }
       const cur = s.voice || (vs.find(v => v.current) || vs[0]).name;
-      vz.innerHTML = vs.slice(0, 12).map((v, i) => `<div class="list-row"><div class="grow"><div class="t">Voix ${i + 1}${i === 0 ? ' ⭐ recommandée' : ''}</div>
-        <div class="s">${QL(v.quality)} · ${v.network ? 'par internet (souvent la plus naturelle)' : 'sur l\'appareil, marche sans internet'}${ACC[v.country] || ''}</div></div>
+      vz.innerHTML = vs.slice(0, 12).map((v, i) => `<div class="list-row"><div class="grow"><div class="t">${v.neural ? '✨ Voix IA naturelle (Siwis)' : 'Voix ' + (v.neural ? i : (vs[0].neural ? i : i + 1))}${i === 0 ? ' ⭐ recommandée' : ''}</div>
+        <div class="s">${v.neural ? (v.loading ? 'en cours de préparation… (quelques secondes au premier lancement)' : 'intelligence artificielle intégrée à l\'appli, marche sans internet') : QL(v.quality) + ' · ' + (v.network ? 'par internet (souvent plus naturelle)' : 'sur l\'appareil, marche sans internet') + (ACC[v.country] || '')}</div></div>
         <button class="pix-btn small gold" data-vt="${esc(v.name)}">${Pixel.svg('speaker')}</button>
         <button class="pix-btn small ${v.name === cur ? 'on' : ''}" data-vs="${esc(v.name)}">${v.name === cur ? 'Choisie' : 'Choisir'}</button></div>`).join('') +
         `<div class="row" style="margin-top:8px"><button class="pix-btn small wood" data-a="ttsset">Installer d'autres voix…</button></div>`;

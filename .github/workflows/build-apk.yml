@@ -23,12 +23,35 @@ jobs:
         with:
           gradle-version: 8.11.1
 
+      - name: Download AI voice and speech engine
+        shell: bash
+        run: |
+          set -eo pipefail
+          exec > >(tee -a build.log) 2>&1
+          V=1.12.40
+          curl -fSL --retry 3 -o libs.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$V/sherpa-onnx-v$V-android.tar.bz2"
+          mkdir -p libs && tar xjf libs.tar.bz2 -C libs
+          find libs -name "*.so" | head -20
+          for abi in arm64-v8a armeabi-v7a; do
+            mkdir -p app/src/main/jniLibs/$abi
+            cp $(find libs -path "*/$abi/*.so") app/src/main/jniLibs/$abi/
+          done
+          curl -fSL --retry 3 -o voice.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2"
+          mkdir -p voice && tar xjf voice.tar.bz2 -C voice
+          D=$(dirname $(find voice -name tokens.txt | head -1))
+          mkdir -p app/src/main/assets/tts
+          cp $(find $D -maxdepth 1 -name "*.onnx" | head -1) app/src/main/assets/tts/model.onnx
+          cp $D/tokens.txt app/src/main/assets/tts/
+          cp -r $D/espeak-ng-data app/src/main/assets/tts/
+          ls -la app/src/main/jniLibs/* app/src/main/assets/tts
+          du -sh app/src/main/assets/tts
+
       - name: Build release APK
         shell: bash
         run: |
           set -o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee -a build.log
 
       - name: Publish release
         env:

@@ -70,6 +70,11 @@ public class MainActivity extends ComponentActivity {
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
     private volatile String wantedVoice = null;
+    private NeuralTts neural;
+
+    private boolean useNeural() {
+        return neural != null && neural.getReady() && (wantedVoice == null || "neural".equals(wantedVoice));
+    }
     private Uri photoUri;
     private PermissionRequest pendingPermission;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -180,6 +185,24 @@ public class MainActivity extends ComponentActivity {
         web.addJavascriptInterface(new Bridge(), "AfterSchoolNative");
         web.loadUrl(START_URL);
 
+        neural = new NeuralTts(this, new NeuralTts.Listener() {
+            @Override
+            public void onStart(String id) {
+                js("window.AS_native&&AS_native.ttsEvent('start'," + JSONObject.quote(id) + ")");
+            }
+
+            @Override
+            public void onDone(String id) {
+                js("window.AS_native&&AS_native.ttsEvent('done'," + JSONObject.quote(id) + ")");
+            }
+
+            @Override
+            public void onRange(String id, int start, int end) {
+                js("window.AS_native&&AS_native.ttsRange(" + JSONObject.quote(id) + "," + start + "," + end + ")");
+            }
+        });
+        neural.init();
+
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 int res = tts.setLanguage(Locale.FRANCE);
@@ -276,12 +299,14 @@ public class MainActivity extends ComponentActivity {
     protected void onPause() {
         super.onPause();
         if (tts != null) tts.stop();
+        if (neural != null) neural.stop();
         js("window.AS_pause&&AS_pause()");
     }
 
     @Override
     protected void onDestroy() {
         if (tts != null) tts.shutdown();
+        if (neural != null) neural.release();
         executor.shutdown();
         if (web != null) web.destroy();
         super.onDestroy();
@@ -373,6 +398,20 @@ public class MainActivity extends ComponentActivity {
         @JavascriptInterface
         public String getVoices() {
             JSONArray arr = new JSONArray();
+            try {
+                if (neural != null && !neural.getFailed()) {
+                    JSONObject n = new JSONObject();
+                    n.put("name", "neural");
+                    n.put("neural", true);
+                    n.put("loading", !neural.getReady());
+                    n.put("quality", 600);
+                    n.put("network", false);
+                    n.put("country", "FR");
+                    n.put("current", useNeural());
+                    arr.put(n);
+                }
+            } catch (Exception ignored) {
+            }
             if (!ttsReady) return arr.toString();
             try {
                 String current = tts.getVoice() != null ? tts.getVoice().getName() : "";
@@ -382,7 +421,7 @@ public class MainActivity extends ComponentActivity {
                     o.put("quality", v.getQuality());
                     o.put("network", v.isNetworkConnectionRequired());
                     o.put("country", v.getLocale().getCountry());
-                    o.put("current", v.getName().equals(current));
+                    o.put("current", !useNeural() && v.getName().equals(current));
                     arr.put(o);
                 }
             } catch (Exception ignored) {
@@ -393,7 +432,7 @@ public class MainActivity extends ComponentActivity {
         @JavascriptInterface
         public void setVoice(String name) {
             wantedVoice = (name == null || name.isEmpty()) ? null : name;
-            if (ttsReady) applyVoice();
+            if (ttsReady && !"neural".equals(wantedVoice)) applyVoice();
         }
 
         @JavascriptInterface
@@ -414,11 +453,16 @@ public class MainActivity extends ComponentActivity {
 
         @JavascriptInterface
         public boolean ttsAvailable() {
-            return ttsReady;
+            return ttsReady || (neural != null && neural.getReady());
         }
 
         @JavascriptInterface
         public void speak(String text, float rate, String id) {
+            if (useNeural()) {
+                if (tts != null) tts.stop();
+                neural.speak(text, rate, id);
+                return;
+            }
             if (!ttsReady) {
                 js("window.AS_native&&AS_native.ttsEvent('done'," + JSONObject.quote(id) + ")");
                 return;
@@ -431,6 +475,7 @@ public class MainActivity extends ComponentActivity {
         @JavascriptInterface
         public void stopSpeak() {
             if (tts != null) tts.stop();
+            if (neural != null) neural.stop();
         }
 
         @JavascriptInterface

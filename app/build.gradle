@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 def runNumber = Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
@@ -14,6 +15,7 @@ android {
         targetSdk 35
         versionCode runNumber
         versionName "1.0." + runNumber
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 
     signingConfigs {
@@ -35,6 +37,14 @@ android {
         }
     }
 
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    packagingOptions {
+        jniLibs { useLegacyPackaging = true }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -46,12 +56,12 @@ android {
     }
 
     androidResources {
-        noCompress += ['woff2']
+        noCompress += ['woff2', 'onnx']
     }
 }
 
 dependencies {
-    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')
     implementation 'androidx.activity:activity:1.9.3'
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.webkit:webkit:1.12.1'
