@@ -10,7 +10,7 @@
     const lines = [
       `${hello}${name ? ' ' + name : ''} ! Prêt pour l'aventure ?`,
       `${hello}${name ? ' ' + name : ''} ! On mine quelques mots ?`,
-      `${hello}${name ? ' ' + name : ''} ! Tes gemmes t'attendent !`,
+      `${hello}${name ? ' ' + name : ''} ! Un nouveau booster de cartes ?`,
       `${hello}${name ? ' ' + name : ''} ! Un petit chrono de lecture ?`
     ];
     return lines[Math.floor(Math.random() * lines.length)];
@@ -38,8 +38,9 @@
           <span class="ic">${Pixel.svg('pickaxe')}</span>Révision<span class="sub">Mots au hasard</span></button>
         <button class="tile" data-go="reading" style="background-image:url(${Pixel.texture('bois')})">
           <span class="ic">${Pixel.svg('clock')}</span>Lecture<span class="sub">Lis et bats ton record</span></button>
-        <button class="tile" data-go="world" style="background-image:url(${Pixel.texture('or')})">
-          <span class="ic">${Pixel.svg('chest')}</span>Mon Monde<span class="sub">Construis avec tes gemmes</span></button>
+        <button class="tile" data-go="cards" style="background-image:url(${Pixel.texture('violet')})">
+          ${Cards.left() && Store.data.stats.gems >= Cards.BOOSTER_COST ? '<span class="badge">BOOSTER !</span>' : ''}
+          <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} · boosters avec tes émeraudes</span></button>
       </div>
     </div>`));
     root.querySelectorAll('.tile').forEach((t, i) => t.style.animationDelay = (0.1 + i * 0.1) + 's');

@@ -5,13 +5,13 @@
     g: '#5faa3c', G: '#3f7f27', l: '#8fdc5c', d: '#86603f', D: '#5f4029',
     y: '#f5c542', Y: '#c8921c', a: '#ffe58a', o: '#ff9d2e', c: '#4fe3d8', C: '#1fa59b',
     b: '#b07a45', B: '#7c522a', r: '#e5533d', R: '#a3321f', p: '#ff8fb1',
-    n: '#3d7be5', N: '#2552a8', m: '#9b59d0', E: '#ffffff', P: '#1a120b'
+    n: '#3d7be5', N: '#2552a8', m: '#9b59d0', v: '#3fd97a', V: '#1e9e52', h: '#b8ffd2', E: '#ffffff', P: '#1a120b'
   };
 
   const SPRITES = {
     gem: [
-      '...kkkkk...', '..kwcccCk..', '.kwccccCCk.', 'kkkkkkkkkkk', 'kwcccccccCk',
-      '.kwcccccCk.', '..kccccCk..', '...kcccCk..', '....kcCk...', '.....kk....'],
+      '...kkkkk...', '..khvvvVk..', '.khvvvvVVk.', 'kkkkkkkkkkk', 'khvvvvvvvVk',
+      '.khvvvvvVk.', '..kvvvvVk..', '...kvvvVk..', '....kvVk...', '.....kk....'],
     star: [
       '.....k.....', '....kyk....', '....kyk....', 'kkkkyyykkkk', 'kyaayyyyyYk',
       '.kyyyyyyYk.', '..kyyyyYk..', '..kyykyYk..', '.kyYk.kYYk.', '.kYk...kYk.', '.kk.....kk.'],

@@ -104,7 +104,7 @@
     const lv = Store.level();
     body.appendChild(el(html`<h2>Progrès</h2>
       <div class="row" style="font-size:clamp(16px,2.6vmin,24px);gap:24px;margin-bottom:12px">
-        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> gemmes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
+        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> émeraudes</span><span><b>${Cards.ownedCount()}</b>/100 cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
       </div>`));
     const words = Object.entries(st.words).map(([w, s]) => ({ w, ...s })).filter(x => x.err > 0).sort((a, b) => (b.err / (b.ok + b.err)) - (a.err / (a.ok + a.err))).slice(0, 12);
     body.appendChild(el(html`<h3>Mots les plus difficiles</h3>`));
@@ -133,7 +133,7 @@
         <button class="pix-btn small gold" data-a="test">${Pixel.svg('speaker')} Tester</button></div></div>
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
-      <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (gemmes, niveaux, chronos)</button></div></div>
+      <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (émeraudes, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p>`));
     const name = body.querySelector('[data-f=name]');
     name.onchange = () => { s.name = name.value.trim(); Store.save(true); UI.toast('Prénom enregistré'); };

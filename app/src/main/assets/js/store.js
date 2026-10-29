@@ -189,7 +189,7 @@
 
     resetProgress() {
       const d = defaults();
-      data.stats = d.stats; data.world = d.world;
+      data.stats = d.stats; data.world = d.world; data.cards = null;
       data.sheets.forEach(s => { (s.attempts || []).forEach(a => Blobs.del(a.recId)); s.attempts = []; });
       save(true);
     }
