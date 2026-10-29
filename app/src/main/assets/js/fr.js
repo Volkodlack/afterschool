@@ -222,5 +222,62 @@
 
   function countWords(text) { return (String(text).match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length; }
 
-  window.FR = { esc, norm, syllables, sylWord, colorize, misspellings, holes, pickHoles, parseWords, guessType, countWords, shuffle, isL, isV };
+
+  /* --- complex sounds (graphèmes complexes) & silent final letters --- */
+  const SND = [
+    ['eau', 'o'], ['aim', 'in'], ['ain', 'in'], ['ein', 'in'], ['oin', 'oin'], ['œu', 'eu'], ['oeu', 'eu'],
+    ['ill', 'ill'], ['au', 'o'], ['ou', 'ou'], ['oi', 'oi'], ['oy', 'oi'], ['ai', 'ai'], ['ei', 'ai'],
+    ['an', 'an'], ['am', 'an'], ['en', 'an'], ['em', 'an'], ['on', 'on'], ['om', 'on'],
+    ['in', 'in'], ['im', 'in'], ['un', 'in'], ['um', 'in'], ['yn', 'in'], ['eu', 'eu'],
+    ['ch', 'ch'], ['gn', 'gn'], ['ph', 'ph'], ['qu', 'qu'], ['er', 'ai'], ['ez', 'ai'], ['et', 'ai']
+  ];
+  const NASAL = new Set(['an', 'am', 'en', 'em', 'on', 'om', 'in', 'im', 'un', 'um', 'yn', 'ain', 'aim', 'ein', 'oin']);
+  const MUTE_EXC = new Set(['bus', 'ours', 'os', 'fils', 'tennis', 'sept', 'net', 'ouest', 'as', 'hélas', 'maïs', 'cactus', 'autobus', 'mars', 'août', 'sud', 'est', 'lis', 'jus']);
+  function soundWord(w, verb) {
+    const lw = w.toLowerCase();
+    const parts = [];
+    let i = 0;
+    // silent final letter(s)
+    let muteFrom = w.length;
+    if (verb && /ent$/.test(lw) && w.length > 3) muteFrom = w.length - 3;
+    else if (w.length > 2 && !MUTE_EXC.has(lw)) {
+      if (/[aeiouyéèêàâôîûœ]nt$/.test(lw) && /ent$/.test(lw) && w.length > 4 && !/(ment|dent|lent|vent|cent|gent|tent|sent|rent|aent)$/.test(lw)) muteFrom = w.length - 2;
+      else if (/[aeiouyéèêàâôîûnr][stdxp]$/.test(lw) && !/(er|ez|et)$/.test(lw)) muteFrom = w.length - 1;
+      else if (/[aeiouéè][stdx]s$/.test(lw)) muteFrom = w.length - 2;
+    }
+    while (i < w.length) {
+      if (i >= muteFrom) { parts.push(`<span class="snd-mute">${esc(w.slice(i))}</span>`); break; }
+      let hit = null;
+      for (const [g, cls] of SND) {
+        if (!lw.startsWith(g, i) || i + g.length > muteFrom + (g.length > 1 ? 0 : 0)) continue;
+        const next = lw[i + g.length] || '';
+        if (NASAL.has(g) && ((next && isV(next)) || next === 'n' || next === 'm' || next === 'h')) continue;
+        if ((g === 'er' || g === 'ez' || g === 'et') && i + g.length !== w.length) continue;
+        if (g === 'er' && w.length <= 3) continue;
+        if (g === 'ill' && i === 0) continue;
+        if (g === 'eu' && lw.startsWith('eu', i) && lw[i - 1] === 'o') continue;
+        hit = [g, cls]; break;
+      }
+      if (hit) {
+        // "ill" after a vowel takes the vowel along (ail, eil, ouil…) — keep simple: just ill
+        parts.push(`<span class="snd snd-${hit[1]}">${esc(w.slice(i, i + hit[0].length))}</span>`);
+        i += hit[0].length;
+      } else { parts.push(esc(w[i])); i++; }
+    }
+    return parts.join('');
+  }
+  function soundsHTML(text) {
+    let out = '', buf = '', prev = '';
+    const flush = () => { if (!buf) return; out += soundWord(buf, /^(ils|elles)$/i.test(prev)); prev = buf; buf = ''; };
+    for (const ch of String(text)) {
+      if (isL(ch)) buf += ch;
+      else { flush(); out += esc(ch); }
+    }
+    flush();
+    return out;
+  }
+  /* render with the chosen reading help: 'syl' | 'snd' | '' */
+  function helpHTML(text, mode) { return mode === 'syl' ? colorize(text) : mode === 'snd' ? soundsHTML(text) : esc(text); }
+
+  window.FR = { soundsHTML, helpHTML, esc, norm, syllables, sylWord, colorize, misspellings, holes, pickHoles, parseWords, guessType, countWords, shuffle, isL, isV };
 })();

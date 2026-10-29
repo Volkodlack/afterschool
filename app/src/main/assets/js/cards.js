@@ -396,7 +396,6 @@
       if (f.classList.contains('flipped')) {
         // send it to the row and show the next one
         f.classList.add('away');
-        SFX.play('whoosh');
         const c = pulled[idx];
         const mini = el(`<div class="mini-card">${cardHTML(c, { isNew: isNew[idx] })}</div>`);
         mini.onclick = () => zoom(c);

@@ -32,7 +32,6 @@
       const r = this.routes[name](screenEl, params || {});
       if (typeof r === 'function') cleanup = r;
       this.refreshHud();
-      SFX.play('whoosh');
     },
     back() {
       if ($('#modal-root').children.length) { this.closeModal(); return true; }
@@ -52,6 +51,8 @@
       const lv = Store.level();
       $('#hud-level .lvl-num').textContent = 'Niveau ' + lv.lvl;
       $('#hud-level .xpfill').style.width = Math.round(lv.cur / lv.need * 100) + '%';
+      const me = $('#hud-me');
+      if (me && window.Avatar) me.innerHTML = Avatar.html(Store.data.settings.avatar) + (Store.data.settings.name ? '<span>' + FR.esc(Store.data.settings.name) + '</span>' : '');
       const s = Store.streak();
       $('#hud-streak').innerHTML = s > 1 ? Pixel.svg('fire') + '<span>' + s + '</span>' : '';
       if (bump) { const g = $('#hud-gems'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); }
@@ -66,7 +67,6 @@
       if (!opts.locked) back.addEventListener('click', e => { if (e.target === back) UI.closeModal(); });
       back._onClose = opts.onClose;
       root.appendChild(back);
-      SFX.play('pop');
       return m;
     },
     closeModal() {
@@ -189,7 +189,6 @@
         if (!b) return;
         e.preventDefault();
         b.classList.add('pressed'); setTimeout(() => b.classList.remove('pressed'), 90);
-        SFX.play('key');
         if (b.dataset.act === 'del') onDel && onDel();
         else if (b.dataset.act === 'ok') onOk && onOk();
         else onKey && onKey(b.dataset.ch);
@@ -197,30 +196,79 @@
       return k;
     },
 
-    /* ---------- parent gate: a multiplication a young child can't do yet ---------- */
-    parentGate() {
+    /* ---------- parent PIN (4 digits) ---------- */
+    pinPad(title, sub) {
       return new Promise(res => {
-        const a = 6 + Math.floor(Math.random() * 4), b = 6 + Math.floor(Math.random() * 4);
         let val = '';
         const m = UI.modal(html`
-          <h2 style="display:flex;align-items:center;gap:10px"><span style="width:1.3em;display:inline-flex">${Pixel.svg('lock')}</span> Espace parent</h2>
-          <p style="font-size:clamp(18px,3vmin,28px);text-align:center;margin:0">Combien font <b>${a} × ${b}</b> ?</p>
-          <div class="gate-display"></div>
-          <div class="gate-keys"></div>`, { onClose: () => res(false) });
-        const disp = m.querySelector('.gate-display'), keys = m.querySelector('.gate-keys');
+          <h2 style="display:flex;align-items:center;gap:10px;justify-content:center"><span style="width:1.3em;display:inline-flex">${Pixel.svg('lock')}</span> ${FR.esc(title)}</h2>
+          ${sub ? `<p style="font-size:clamp(16px,2.6vmin,24px);text-align:center;margin:0">${sub}</p>` : ''}
+          <div class="pin-dots">${'<i></i>'.repeat(4)}</div>
+          <div class="gate-keys"></div>
+          <div class="row center" style="margin-top:12px" data-z="extra"></div>`, { onClose: () => res(null) });
+        const dots = m.querySelectorAll('.pin-dots i'), keys = m.querySelector('.gate-keys');
+        const show = () => dots.forEach((d, i) => d.classList.toggle('on', i < val.length));
         ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'].forEach(ch => {
           const k = el(`<button class="key ${ch === 'OK' ? 'ok' : ch === '⌫' ? 'del' : ''}">${ch}</button>`);
           k.onclick = () => {
-            SFX.play('key');
             if (ch === '⌫') val = val.slice(0, -1);
-            else if (ch === 'OK') {
-              if (parseInt(val, 10) === a * b) { m.parentElement._onClose = null; UI.closeModal(); res(true); }
-              else { UI.shake(disp); SFX.play('bad'); val = ''; }
-            } else if (val.length < 3) val += ch;
-            disp.textContent = val;
+            else if (ch === 'OK') { if (val.length === 4) { m.parentElement._onClose = null; UI.closeModal(); res(val); } else UI.shake(m.querySelector('.pin-dots')); }
+            else if (val.length < 4) val += ch;
+            show();
+            if (val.length === 4 && ch !== 'OK' && ch !== '⌫') setTimeout(() => { if (m.isConnected && val.length === 4) { m.parentElement._onClose = null; UI.closeModal(); res(val); } }, 180);
           };
           keys.appendChild(k);
         });
+        m._extra = m.querySelector('[data-z=extra]');
+        UI._pinModal = m;
+      });
+    },
+
+    async createPin() {
+      for (;;) {
+        const a = await UI.pinPad('Code parent', 'Choisissez un code secret à 4 chiffres');
+        if (!a) return false;
+        const b = await UI.pinPad('Code parent', 'Tapez-le une deuxième fois');
+        if (!b) return false;
+        if (a === b) { Store.data.settings.pin = a; Store.save(true); UI.toast('Code parent enregistré !'); return true; }
+        UI.toast('Les deux codes sont différents, on recommence');
+      }
+    },
+
+    async parentGate() {
+      const st = Store.data.settings;
+      if (!st.pin) return UI.createPin();
+      for (let tries = 0; tries < 5; tries++) {
+        const p = UI.pinPad('Espace parent', tries ? '<span style="color:var(--red)">Code incorrect, réessayez</span>' : 'Entrez le code parent');
+        const m = UI._pinModal;
+        const forgot = el('<button class="pix-btn small wood">Code oublié ?</button>');
+        let forgotClicked = false;
+        forgot.onclick = () => { forgotClicked = true; m.parentElement._onClose = null; UI.closeModal(); UI._pinResolve && UI._pinResolve(); };
+        m._extra.appendChild(forgot);
+        const v = await Promise.race([p, new Promise(r => { UI._pinResolve = () => r('__forgot'); })]);
+        UI._pinResolve = null;
+        if (v === '__forgot' || forgotClicked) return UI.forgotPin();
+        if (!v) return false;
+        if (v === st.pin) return true;
+        SFX.play('bad'); Haptic(150);
+      }
+      return false;
+    },
+
+    forgotPin() {
+      return new Promise(res => {
+        const a = 23 + Math.floor(Math.random() * 60), b = 6 + Math.floor(Math.random() * 4);
+        const m = UI.modal(html`<h2>Code oublié</h2>
+          <p style="font-size:clamp(16px,2.6vmin,24px)">Pour vérifier que vous êtes un adulte : combien font <b>${a} × ${b}</b> ?</p>
+          <div class="field"><input type="number" inputmode="numeric" data-f="v"></div>
+          <div class="row end"><button class="pix-btn" data-a="no">Annuler</button><button class="pix-btn green" data-a="ok">Valider</button></div>`, { onClose: () => res(false) });
+        const inp = m.querySelector('[data-f=v]');
+        m.querySelector('[data-a=no]').onclick = () => UI.closeModal();
+        m.querySelector('[data-a=ok]').onclick = async () => {
+          if (parseInt(inp.value, 10) !== a * b) { UI.shake(inp); SFX.play('bad'); return; }
+          m.parentElement._onClose = null; UI.closeModal();
+          res(await UI.createPin());
+        };
       });
     },
 
@@ -270,13 +318,10 @@
   };
 
   $('#btn-back').innerHTML = Pixel.svg('back');
-  $('#btn-back').onclick = () => { SFX.play('tap'); UI.back(); };
+  $('#btn-back').onclick = () => UI.back();
   window.AS_back = () => UI.back();
   window.AS_pause = () => { if (UI.onPause) UI.onPause(); };
 
-  document.addEventListener('pointerdown', e => {
-    if (e.target.closest('.pix-btn, .tile, .list-card, .chip')) SFX.play('tap');
-  }, true);
 
   window.UI = UI;
 })();

@@ -114,19 +114,32 @@
   });
 
   /* ---------- reader ---------- */
+  /* split into whole sentences: OCR line breaks are ignored, dialogue in quotes is its own chunk */
+  function sentences(t) {
+    const flat = t.replace(/(\p{L})-\s*\n\s*(\p{Ll})/gu, '$1$2').replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    const out = [];
+    let cur = '';
+    for (let i = 0; i < flat.length; i++) {
+      const ch = flat[i], next = flat[i + 1] || '';
+      if (/[«“]/.test(ch) && cur.trim()) { out.push(cur.trim()); cur = ''; }
+      cur += ch;
+      if (/[.!?…]/.test(ch) && !/[.!?…»”"]/.test(next) && !/^\s*[»”]/.test(flat.slice(i + 1, i + 3))) { out.push(cur.trim()); cur = ''; }
+      else if (/[»”]/.test(ch)) { out.push(cur.trim()); cur = ''; }
+    }
+    if (cur.trim()) out.push(cur.trim());
+    const merged = [];
+    out.forEach(x => { if (!/\p{L}/u.test(x) && merged.length) merged[merged.length - 1] += ' ' + x; else if (x) merged.push(x); });
+    return merged;
+  }
+
   function buildUnits(sheet) {
     const t = sheet.text.replace(/\r/g, '');
     if (sheet.type === 'sons' || sheet.type === 'mots') {
       return t.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean).map(s => ({ text: s, grid: true }));
     }
-    if (sheet.type === 'phrases') return t.split('\n').map(s => s.trim()).filter(Boolean).map(s => ({ text: s }));
-    // texte: join OCR lines, split into sentences
-    const paras = t.split(/\n\s*\n/).map(p => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+    const paras = t.split(/\n\s*\n/).filter(p => p.trim());
     const units = [];
-    paras.forEach((p, pi) => {
-      const sents = p.match(/[^.!?…]+[.!?…]+["»”]?|[^.!?…]+$/g) || [p];
-      sents.map(s => s.trim()).filter(Boolean).forEach((s, si) => units.push({ text: s, paraStart: si === 0 && pi > 0 }));
-    });
+    paras.forEach((p, pi) => sentences(p).forEach((s, si) => units.push({ text: s, paraStart: si === 0 && pi > 0 })));
     return units;
   }
 
@@ -145,7 +158,7 @@
     root.classList.add('full');
     const settings = Store.data.settings;
     settings.readerScale = settings.readerScale || 1;
-    let syl = settings.readerSyl !== false && sheet.type !== 'sons';
+    let help = settings.readerHelp != null ? settings.readerHelp : (sheet.type === 'sons' ? 'snd' : 'syl');
     let ruler = false, focus = 0, mode = 'idle', speakingIdx = -1;
     const units = buildUnits(sheet);
     const grid = units.length && units[0].grid;
@@ -155,7 +168,8 @@
         <button class="pix-btn small gold" data-a="listen">${Pixel.svg('speaker')} Écouter</button>
         <button class="pix-btn small gold" data-a="echo">${Pixel.svg('mic')} Lis après moi</button>
         <button class="pix-btn small" data-a="speed" title="Vitesse">${Pixel.svg('turtle')}</button>
-        <button class="pix-btn small ${syl ? 'on' : ''}" data-a="syl"><span><span class="syl-a" style="color:#fff">sy</span><span style="color:#ffd0d0">lla</span>bes</span></button>
+        <button class="pix-btn small ${help === 'syl' ? 'on' : ''}" data-a="syl"><span><span style="color:#cfe0ff">sy</span><span style="color:#ffd0d0">lla</span>bes</span></button>
+        <button class="pix-btn small ${help === 'snd' ? 'on' : ''}" data-a="snd"><span>s<span style="color:#9ff5a8;text-decoration:underline">on</span>s c<span style="color:#ffd27a;text-decoration:underline">om</span>plexes</span></button>
         <button class="pix-btn small" data-a="ruler">${Pixel.svg('ruler')} Règle</button>
         <button class="pix-btn small" data-a="minus">A−</button>
         <button class="pix-btn small" data-a="plus">A+</button>
@@ -196,7 +210,7 @@
       reader.innerHTML = '';
       units.forEach((u, ui) => {
         if (u.grid) {
-          const it = el(`<span class="item w" data-u="${ui}">${syl ? FR.colorize(u.text) : esc(u.text)}</span>`);
+          const it = el(`<span class="item w" data-u="${ui}">${FR.helpHTML(u.text, help)}</span>`);
           reader.appendChild(it);
           return;
         }
@@ -205,12 +219,12 @@
         let pos = 0, out = '';
         wordsIn(u.text).forEach((w, wi) => {
           out += esc(u.text.slice(pos, w.i));
-          out += `<span class="w" data-u="${ui}" data-wi="${wi}">${syl ? FR.colorize(w.s) : esc(w.s)}</span>`;
+          out += `<span class="w" data-u="${ui}" data-wi="${wi}">${FR.helpHTML(w.s, help)}</span>`;
           pos = w.e;
         });
         out += esc(u.text.slice(pos));
         line.innerHTML = out;
-        if (sheet.type === 'texte') line.style.display = 'inline';
+        if (sheet.type === 'texte' && !u.paraStart) line.style.display = 'inline';
         reader.appendChild(line);
         if (sheet.type === 'texte') reader.appendChild(document.createTextNode(' '));
       });
@@ -420,7 +434,9 @@
     wrap.querySelector('[data-a=listen]').onclick = () => { if (mode === 'reading' || mode === 'countdown') return; if (mode === 'echo') { echoCleanup && echoCleanup(); } listenAll(); };
     wrap.querySelector('[data-a=echo]').onclick = () => { if (mode === 'reading' || mode === 'countdown') return; if (mode === 'listen') { mode = 'idle'; stopListening(); } echo(); };
     speedBtn.onclick = () => { slow = !slow; speedBtn.innerHTML = Pixel.svg(slow ? 'turtle' : 'rabbit'); UI.toast(slow ? 'Lecture lente' : 'Lecture normale', 1200); };
-    wrap.querySelector('[data-a=syl]').onclick = (e) => { syl = !syl; settings.readerSyl = syl; Store.save(); e.currentTarget.classList.toggle('on', syl); render(); };
+    const setHelp = (m) => { help = help === m ? '' : m; settings.readerHelp = help; Store.save(); wrap.querySelector('[data-a=syl]').classList.toggle('on', help === 'syl'); wrap.querySelector('[data-a=snd]').classList.toggle('on', help === 'snd'); render(); };
+    wrap.querySelector('[data-a=syl]').onclick = () => setHelp('syl');
+    wrap.querySelector('[data-a=snd]').onclick = () => setHelp('snd');
     wrap.querySelector('[data-a=ruler]').onclick = (e) => { ruler = !ruler; e.currentTarget.classList.toggle('on', ruler); rulerNav.style.display = ruler ? '' : 'none'; render(); };
     wrap.querySelector('[data-a=up]').onclick = () => { focus = Math.max(0, focus - 1); applyFocus(); };
     wrap.querySelector('[data-a=down]').onclick = () => { focus = Math.min(units.length - 1, focus + 1); applyFocus(); };

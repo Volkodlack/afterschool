@@ -486,3 +486,33 @@ h2.pix-title { font-size: clamp(22px, 4vmin, 40px); color: #fff; margin: .2em 0 
 .pulled-row.done .mini-card { width: clamp(110px, 17vmin, 190px); }
 
 .zoom-card .tc-atk b { white-space: normal; }
+
+/* complex sounds */
+.snd { border-bottom: .09em solid currentColor; padding: 0 .02em; border-radius: 0; }
+.snd-ou { color: #1e9e52; background: rgba(63,217,122,.14); }
+.snd-o { color: #d9731a; background: rgba(255,157,46,.15); }
+.snd-oi { color: #8e3fc9; background: rgba(155,89,208,.13); }
+.snd-an { color: #b5462f; background: rgba(229,83,61,.12); }
+.snd-on { color: #1f5fd1; background: rgba(61,123,229,.13); }
+.snd-in { color: #d13f86; background: rgba(255,143,177,.2); }
+.snd-oin { color: #7a4fd1; background: rgba(155,89,208,.13); }
+.snd-ai { color: #a77b00; background: rgba(245,197,66,.22); }
+.snd-eu { color: #13878a; background: rgba(79,227,216,.18); }
+.snd-ill { color: #6b3398; background: rgba(155,89,208,.16); }
+.snd-ch, .snd-gn, .snd-ph, .snd-qu { color: #c0392b; background: rgba(229,83,61,.1); }
+.snd-mute { color: #b3aaa0; }
+
+.pin-dots { display: flex; gap: 16px; justify-content: center; margin: 16px 0; }
+.pin-dots i { width: 28px; height: 28px; border: 4px solid var(--ink); background: #fff; }
+.pin-dots i.on { background: var(--grass); box-shadow: inset -4px -4px 0 var(--grass-lo); animation: pop .2s steps(3); }
+#hud-me:empty { display: none; }
+#hud-me .av { width: 1.6em; height: 1.6em; }
+.av { display: inline-flex; align-items: center; justify-content: center; }
+.av img, .av svg { width: 100%; height: 100%; image-rendering: pixelated; }
+.avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(90px, 15vmin, 150px), 1fr)); gap: var(--gap); width: min(100%, 1000px); }
+.avatar-pick { aspect-ratio: 1; border: 5px solid var(--ink); background: rgba(255,255,255,.85); cursor: pointer; padding: 10%; box-shadow: 0 6px 0 rgba(43,29,18,.4); animation: tileIn .45s steps(5) both; }
+.avatar-pick.sel { background: #fff3b0; outline: 6px solid var(--gold); transform: translateY(-6px) scale(1.06); }
+.avatar-pick .av { width: 100%; height: 100%; }
+.avatar-pick.sel .av { animation: jump .6s steps(6) infinite; }
+.name-display { font-family: "Lecture"; font-weight: 700; font-size: clamp(36px, 8vmin, 80px); background: #fff; border: 5px solid var(--ink); min-width: 6em; min-height: 1.4em; text-align: center; padding: 0 .4em; box-shadow: 0 8px 0 rgba(43,29,18,.4); }
+.name-display::after { content: "▌"; color: var(--gold-lo); animation: blinkrec 1s steps(2) infinite; }

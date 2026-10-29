@@ -127,7 +127,8 @@
   function reglages(body) {
     const s = Store.data.settings;
     body.appendChild(el(html`<h2>Réglages</h2>
-      <div class="field"><label>Prénom de l'enfant</label><input data-f="name" value="${esc(s.name)}" placeholder="Prénom"></div>
+      <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
+      <div class="field"><label>Code parent</label><div class="seg"><button class="pix-btn small wood" data-a="pin">${Pixel.svg('lock')} Changer le code</button></div></div>
       <div class="field"><label>Vitesse de la voix</label><div class="seg">
         ${[[0.7, 'Lente'], [0.85, 'Normale'], [1, 'Rapide']].map(([v, l]) => `<button class="pix-btn small ${Math.abs(s.ttsRate - v) < .01 ? 'on' : ''}" data-r="${v}">${l}</button>`).join('')}
         <button class="pix-btn small gold" data-a="test">${Pixel.svg('speaker')} Tester</button></div></div>
@@ -135,8 +136,8 @@
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (émeraudes, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p>`));
-    const name = body.querySelector('[data-f=name]');
-    name.onchange = () => { s.name = name.value.trim(); Store.save(true); UI.toast('Prénom enregistré'); };
+    body.querySelector('[data-a=profile]').onclick = () => UI.go('welcome', { edit: true });
+    body.querySelector('[data-a=pin]').onclick = () => UI.createPin();
     body.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { s.ttsRate = +b.dataset.r; Store.save(true); body.querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
     body.querySelector('[data-a=test]').onclick = () => UI.say('Bonjour ' + (s.name || '') + ' ! On va bien travailler aujourd\'hui.');
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
