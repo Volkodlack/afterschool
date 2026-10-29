@@ -104,7 +104,7 @@
     const lv = Store.level();
     body.appendChild(el(html`<h2>Progrès</h2>
       <div class="row" style="font-size:clamp(16px,2.6vmin,24px);gap:24px;margin-bottom:12px">
-        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> émeraudes</span><span><b>${Cards.ownedCount()}</b>/100 cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
+        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> ${Theme.t.cur}</span><span><b>${Cards.ownedCount()}</b>/100 cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
       </div>`));
     const words = Object.entries(st.words).map(([w, s]) => ({ w, ...s })).filter(x => x.err > 0).sort((a, b) => (b.err / (b.ok + b.err)) - (a.err / (a.ok + a.err))).slice(0, 12);
     body.appendChild(el(html`<h3>Mots les plus difficiles</h3>`));
@@ -128,16 +128,21 @@
     const s = Store.data.settings;
     body.appendChild(el(html`<h2>Réglages</h2>
       <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
+      <div class="field"><label>Thème de l'appli</label><div class="seg">${Theme.list.map(t => `<button class="pix-btn small ${Theme.id === t.id ? 'on' : ''}" data-theme="${t.id}">${t.name}</button>`).join('')}</div></div>
       <div class="field"><label>Code parent</label><div class="seg"><button class="pix-btn small wood" data-a="pin">${Pixel.svg('lock')} Changer le code</button></div></div>
       <div class="field"><label>Vitesse de la voix</label><div class="seg">
         ${[[0.7, 'Lente'], [0.85, 'Normale'], [1, 'Rapide']].map(([v, l]) => `<button class="pix-btn small ${Math.abs(s.ttsRate - v) < .01 ? 'on' : ''}" data-r="${v}">${l}</button>`).join('')}
         <button class="pix-btn small gold" data-a="test">${Pixel.svg('speaker')} Tester</button></div></div>
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
-      <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (émeraudes, niveaux, cartes, chronos)</button></div></div>
+      <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p>`));
     body.querySelector('[data-a=profile]').onclick = () => UI.go('welcome', { edit: true });
     body.querySelector('[data-a=pin]').onclick = () => UI.createPin();
+    body.querySelectorAll('[data-theme]').forEach(b => b.onclick = async () => {
+      if (b.dataset.theme === Theme.id) return;
+      if (await UI.confirm('Changer de thème ? Chaque thème a sa propre collection de cartes.', 'Changer', 'Annuler')) Theme.set(b.dataset.theme);
+    });
     body.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { s.ttsRate = +b.dataset.r; Store.save(true); body.querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
     body.querySelector('[data-a=test]').onclick = () => UI.say('Bonjour ' + (s.name || '') + ' ! On va bien travailler aujourd\'hui.');
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });

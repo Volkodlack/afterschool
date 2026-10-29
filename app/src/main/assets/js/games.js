@@ -12,7 +12,7 @@
     look:    { name: 'Regarde & Écris', icon: 'eye', tex: 'herbe', desc: 'Mémorise puis écris' },
     anagram: { name: 'Lettres mélangées', icon: 'letters', tex: 'bois', desc: 'Remets les lettres' },
     trous:   { name: 'Mot à trous', icon: 'hole', tex: 'sable', desc: 'Trouve les lettres' },
-    ore:     { name: 'Le bon bloc', icon: 'pickaxe', tex: 'pierre', desc: 'Casse le bon mot' },
+    ore:     { name: Theme.t.oreName, icon: 'pickaxe', tex: 'pierre', desc: Theme.t.oreDesc },
     dictee:  { name: 'Dictée magique', icon: 'pencil', tex: 'brique', desc: 'Écoute et écris' },
     pluie:   { name: 'Pluie de mots', icon: 'rain', tex: 'eau', desc: 'Attrape le bon mot' }
   };
@@ -238,7 +238,7 @@
     async ore(area, word, done, root) {
       let errors = 0;
       area.innerHTML = '';
-      const prompt = el('<div class="prompt">Écoute, puis casse le bloc du mot bien écrit !</div>');
+      const prompt = el(`<div class="prompt">${Theme.t.orePrompt}</div>`);
       const tools = el('<div class="row center"></div>');
       tools.appendChild(UI.speakBtn(word, 'Écouter le mot'));
       const grid = el('<div class="ore-grid"></div>');

@@ -9,7 +9,7 @@
     const hello = h < 12 ? 'Bonjour' : h < 18 ? 'Salut' : 'Bonsoir';
     const lines = [
       `${hello}${name ? ' ' + name : ''} ! Prêt pour l'aventure ?`,
-      `${hello}${name ? ' ' + name : ''} ! On mine quelques mots ?`,
+      `${hello}${name ? ' ' + name : ''} ! ${Theme.t.greet}`,
       `${hello}${name ? ' ' + name : ''} ! Un nouveau booster de cartes ?`,
       `${hello}${name ? ' ' + name : ''} ! Un petit chrono de lecture ?`
     ];
@@ -30,7 +30,7 @@
     }
   };
 
-  UI.register('welcome', (root, { edit }) => {
+  UI.register('welcome', (root, { edit, themeOnly }) => {
     UI.setTitle(edit ? 'Mon profil' : 'Bienvenue !');
     const st = Store.data.settings;
     let name = st.name || '';
@@ -39,7 +39,7 @@
       root.innerHTML = '';
       root.classList.add('typing', 'full');
       const w = el(html`<div class="game center-col">
-        <div class="home-hero" style="margin:0">${UI.mascot('small')}<div class="bubble">${edit ? 'Tu veux changer ton prénom ?' : 'Salut ! Je suis Bloki. Comment tu t\'appelles ?'}</div></div>
+        <div class="home-hero" style="margin:0">${UI.mascot('small')}<div class="bubble">${edit ? 'Tu veux changer ton prénom ?' : `Salut ! Je suis ${Theme.t.mascot}. Comment tu t'appelles ?`}</div></div>
         <div class="name-display"></div></div>`);
       root.appendChild(w);
       const disp = w.querySelector('.name-display');
@@ -91,7 +91,22 @@
         }
       };
     }
-    stepName();
+    function stepTheme() {
+      root.innerHTML = '';
+      const w = el(html`<div class="game center-col">
+        <h2 class="pix-title" style="text-align:center">Choisis ton monde !</h2>
+        <div class="tiles theme-pick">
+          <button class="tile theme-tile tt-pixel" data-t="pixel"><span class="ic">${Pixel.svg('mascot')}</span>Monde des blocs<span class="sub">Pixel art, blocs et créatures</span></button>
+          <button class="tile theme-tile tt-poney" data-t="poney"><span class="ic">${Theme.previewSVG('poney')}</span>Centre équestre<span class="sub">Kawaii, poneys et chevaux</span></button>
+        </div></div>`);
+      root.appendChild(w);
+      w.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+        SFX.play('good');
+        if (b.dataset.t === Theme.id) { st.theme = Theme.id; Store.save(true); if (themeOnly) UI.home(); else stepName(); }
+        else Theme.set(b.dataset.t);
+      });
+    }
+    if (!edit && !st.theme) stepTheme(); else stepName();
     return () => root.classList.remove('typing', 'full');
   });
 
@@ -119,7 +134,7 @@
           <span class="ic">${Pixel.svg('clock')}</span>Lecture<span class="sub">Lis et bats ton record</span></button>
         <button class="tile" data-go="cards" style="background-image:url(${Pixel.texture('violet')})">
           ${Cards.left() && Store.data.stats.gems >= Cards.BOOSTER_COST ? '<span class="badge">BOOSTER !</span>' : ''}
-          <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} · boosters avec tes émeraudes</span></button>
+          <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} · boosters avec tes ${Theme.t.cur}</span></button>
       </div>
     </div>`));
     root.querySelectorAll('.tile').forEach((t, i) => t.style.animationDelay = (0.1 + i * 0.1) + 's');
@@ -137,5 +152,6 @@
   });
 
   SFX.enabled = Store.data.settings.sound !== false;
-  if (Store.data.settings.onboarded) UI.go('home'); else UI.go('welcome', {});
+  if (Store.data.settings.onboarded && !Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
+  else if (Store.data.settings.onboarded) UI.go('home'); else UI.go('welcome', {});
 })();

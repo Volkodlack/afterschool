@@ -20,7 +20,7 @@
     pack: ['...kkkkkkkk', '..kyyyyyyyk', '.kkkkkkkkyk', 'kyyyyyyyykk', 'kynnnnnnykk', 'kynwnvnnyk.', 'kynnvvvnyk.', 'kynnnvnnyk.', 'kyyyyyyyyk.', 'kyykkkkyyk.', 'kyyyyyyyyk.', 'kkkkkkkkkk.']
   });
 
-  const EL = {
+  let EL = {
     feu:    { name: 'Feu', h: [5, 30], s: 75, l: 55, a1: '#ff9d2e', a2: '#ffe14d', bg: '#ffd9b0', frame: '#e5533d', frame2: '#a3321f',
               atk: ['Boule de feu', 'Souffle brûlant', 'Danse des flammes', 'Éruption', 'Étincelle chaude'],
               txt: ['Il adore griller des chamallows.', 'Sa queue chauffe comme un radiateur.', 'Il éternue des étincelles.'] },
@@ -47,7 +47,7 @@
               txt: ['Il adore les glaces à la vanille.', 'Il fait de la luge sur son ventre.', 'Même l\'été, il a froid aux pieds.'] }
   };
 
-  const NAMES = {
+  let NAMES = {
     feu: ['Flammouche', 'Brasero', 'Pyrolin', 'Cendrillot', 'Grillou', 'Braisette', 'Tisonix', 'Chaudrou', 'Fumeron', 'Volcanou', 'Magmatus', 'Fournaise'],
     eau: ['Ploufix', 'Bullette', 'Gouttelin', 'Flaquette', 'Clapotis', 'Ondin', 'Coralou', 'Marinet', 'Vaguelou', 'Aquarin', 'Tsunamo', 'Abyssor'],
     plante: ['Feuillou', 'Moussette', 'Glandu', 'Trèflon', 'Champinou', 'Bourgeonix', 'Racinot', 'Pétalia', 'Fougérix', 'Ronceline', 'Lianor', 'Sylvestor'],
@@ -57,7 +57,8 @@
     ombre: ['Ombrinet', 'Lunette', 'Brumette', 'Noxou', 'Chauvinou', 'Hibouclette', 'Fantômou', 'Minuitor', 'Crépuscule', 'Éclipsa', 'Spectrix', 'Nocturnor'],
     glace: ['Givrou', 'Flocounet', 'Gelinou', 'Grêlon', 'Pingouinou', 'Iglouf', 'Frimas', 'Polarix', 'Banquisa', 'Stalactix', 'Blizzaro', 'Glaciator']
   };
-  const LEGENDS = [['Dragor', 'feu'], ['Léviathor', 'eau'], ['Solarion', 'foudre'], ['Galaxor', 'ombre']];
+  let LEGENDS = [['Dragor', 'feu'], ['Léviathor', 'eau'], ['Solarion', 'foudre'], ['Galaxor', 'ombre']];
+  if (Theme.id === 'poney') { EL = Theme.pony.EL; NAMES = Theme.pony.NAMES; LEGENDS = Theme.pony.LEGENDS; }
 
   const RAR = {
     c:  { name: 'Commune', sym: '●', pv: [30, 60], dmg: [10, 30] },
@@ -91,13 +92,14 @@
     c.pv = between(r, RAR[c.rar].pv);
     c.atk = EL[c.el].atk[Math.floor(r() * EL[c.el].atk.length)];
     c.dmg = between(r, RAR[c.rar].dmg);
-    c.txt = c.rar === 'or' ? 'Une légende que très peu de dresseurs ont vue.' : EL[c.el].txt[Math.floor(r() * 3)];
+    c.txt = c.rar === 'or' ? Theme.t.legendTxt : EL[c.el].txt[Math.floor(r() * EL[c.el].txt.length)];
   });
 
   /* ---------- procedural pixel creature ---------- */
   const artCache = {};
   function art(card) {
     if (artCache[card.id]) return artCache[card.id];
+    if (Theme.id === 'poney') return (artCache[card.id] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Theme.ponyArt(card, rng)));
     const W = 20, H = 20, C = 10;
     const r = rng('art-' + card.name);
     const E = EL[card.el];
@@ -224,11 +226,16 @@
   }
   function state() {
     const d = Store.data;
-    if (!d.cards) d.cards = { owned: {}, week: '', opened: 0, total: 0 };
-    if (d.cards.week !== weekKey()) { d.cards.week = weekKey(); d.cards.opened = 0; }
-    return d.cards;
+    if (!d.cardsT) {
+      d.cardsT = { pixel: { owned: (d.cards && d.cards.owned) || {}, total: (d.cards && d.cards.total) || 0 } };
+      d.cardsWeek = { week: (d.cards && d.cards.week) || '', opened: (d.cards && d.cards.opened) || 0 };
+    }
+    if (!d.cardsWeek) d.cardsWeek = { week: '', opened: 0 };
+    if (!d.cardsT[Theme.id]) d.cardsT[Theme.id] = { owned: {}, total: 0 };
+    if (d.cardsWeek.week !== weekKey()) { d.cardsWeek.week = weekKey(); d.cardsWeek.opened = 0; }
+    return d.cardsT[Theme.id];
   }
-  const left = () => Math.max(0, BOOSTERS_PER_WEEK - state().opened);
+  const left = () => { state(); return Math.max(0, BOOSTERS_PER_WEEK - Store.data.cardsWeek.opened); };
   const ownedCount = () => Object.keys(state().owned).length;
 
   function draw() {
@@ -256,7 +263,7 @@
     const n = opts.count > 1 ? `<span class="tc-count">×${opts.count}</span>` : '';
     return `<div class="tcard r-${c.rar} el-${c.el}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
       <div class="tc-in">
-        <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">PV<b>${c.pv}</b></span><span class="tc-el">${Pixel.svg('el_' + c.el)}</span></div>
+        <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">${Theme.t.pv}<b>${c.pv}</b></span><span class="tc-el">${Pixel.svg('el_' + c.el)}</span></div>
         <div class="tc-art"><img src="${art(c)}" alt=""></div>
         <div class="tc-meta">N°${c.num} · ${E.name} · ${R.name} ${R.sym}</div>
         <div class="tc-atk"><span class="tc-cost">${Pixel.svg('el_' + c.el)}${c.dmg >= 60 ? Pixel.svg('el_' + c.el) : ''}</span><b>${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
@@ -283,9 +290,9 @@
           <div class="progress"><div style="width:${own}%"></div></div>
           <div style="margin-top:10px;font-size:clamp(15px,2.4vmin,22px)">Boosters cette semaine : <b>${left()} / ${BOOSTERS_PER_WEEK}</b> ${left() ? '' : '— reviens lundi !'}</div>
         </div>
-        <button class="pix-btn gold big" data-a="open" ${left() && gems >= BOOSTER_COST ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${BOOSTER_COST} émeraudes</span></button>
+        <button class="pix-btn gold big" data-a="open" ${left() && gems >= BOOSTER_COST ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${BOOSTER_COST} ${Theme.t.cur}</span></button>
       </div>
-      ${left() && gems < BOOSTER_COST ? `<p class="prompt">Encore ${BOOSTER_COST - gems} émeraudes à gagner en jouant pour ouvrir un booster !</p>` : ''}
+      ${left() && gems < BOOSTER_COST ? `<p class="prompt">Encore ${BOOSTER_COST - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
       <div class="tabs" style="margin-top:var(--gap)">
         <button class="pix-btn small ${filter === 'all' ? 'on' : ''}" data-f="all">Toutes</button>
         ${Object.entries(EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}"><span style="width:1.1em;display:inline-flex">${Pixel.svg('el_' + k)}</span>${e.name}</button>`).join('')}
@@ -307,8 +314,8 @@
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
     wrap.querySelector('[data-a=open]').onclick = async () => {
       if (!left()) { UI.toast('Plus de booster cette semaine, reviens lundi !'); return; }
-      if (Store.data.stats.gems < BOOSTER_COST) { UI.toast(`Il te faut ${BOOSTER_COST} émeraudes`); return; }
-      if (!(await UI.confirm(`Ouvrir un booster pour ${BOOSTER_COST} émeraudes ?`, 'Oui !', 'Non'))) return;
+      if (Store.data.stats.gems < BOOSTER_COST) { UI.toast(`Il te faut ${BOOSTER_COST} ${Theme.t.cur}`); return; }
+      if (!(await UI.confirm(`Ouvrir un booster pour ${BOOSTER_COST} ${Theme.t.cur} ?`, 'Oui !', 'Non'))) return;
       UI.go('booster');
     };
   });
@@ -330,7 +337,7 @@
 
   function packHTML() {
     return `<div class="pack"><div class="pack-shine"></div><div class="pack-top"></div>
-      <div class="pack-body"><div class="pack-logo">${Pixel.svg('mascot')}</div><div class="pack-title">CARTES<br>AFTER<br>SCHOOL</div><div class="pack-sub">5 cartes</div></div></div>`;
+      <div class="pack-body"><div class="pack-logo">${Pixel.svg('mascot')}</div><div class="pack-title">${Theme.t.packTitle}</div><div class="pack-sub">5 cartes</div></div></div>`;
   }
 
   /* ---------- booster opening ---------- */
@@ -340,7 +347,7 @@
     if (!left() || Store.data.stats.gems < BOOSTER_COST) { UI.back(); return; }
     // pay and draw immediately so leaving mid-animation never loses cards
     Store.spendGems(BOOSTER_COST);
-    st.opened++; st.total = (st.total || 0) + 1;
+    Store.data.cardsWeek.opened++; st.total = (st.total || 0) + 1;
     const pulled = draw();
     const isNew = pulled.map(c => !st.owned[c.id]);
     const seen = new Set();

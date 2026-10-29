@@ -120,6 +120,7 @@
     const c = ac(); if (!c) return;
     const t0 = c.currentTime + start;
     const o = c.createOscillator(), g = c.createGain();
+    if (SFX.soft) { type = type === 'sawtooth' ? 'triangle' : 'sine'; vol *= 1.4; }
     o.type = type; o.frequency.setValueAtTime(freq, t0);
     if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
     g.gain.setValueAtTime(vol, t0);
