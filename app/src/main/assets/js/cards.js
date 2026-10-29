@@ -3,7 +3,7 @@
   const { html, el } = UI;
   const esc = FR.esc;
 
-  const BOOSTER_COST = 50;
+  const BOOSTER_COST = 125;
   const BOOSTERS_PER_WEEK = 2;
   const CARDS_PER_BOOSTER = 5;
 

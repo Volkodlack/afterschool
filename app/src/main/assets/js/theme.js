@@ -268,6 +268,7 @@
   window.Theme = Theme;
 
   try { window.AfterSchoolNative && AfterSchoolNative.setBackground(id === 'poney' ? '#ffd6ea' : '#5fb4ee'); } catch (e) {}
+  if (Store.data.settings.dys) document.body.classList.add('dys');
   if (id === 'poney') {
     document.body.classList.add('theme-poney');
     const origSvg = Pixel.svg;

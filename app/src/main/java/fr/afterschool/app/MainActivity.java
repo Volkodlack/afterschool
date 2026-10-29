@@ -54,6 +54,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
+import android.speech.tts.Voice;
+import org.json.JSONArray;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -65,6 +69,7 @@ public class MainActivity extends ComponentActivity {
     private FrameLayout root;
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
+    private volatile String wantedVoice = null;
     private Uri photoUri;
     private PermissionRequest pendingPermission;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -203,6 +208,7 @@ public class MainActivity extends ComponentActivity {
                         js("window.AS_native&&AS_native.ttsRange(" + JSONObject.quote(id) + "," + start + "," + end + ")");
                     }
                 });
+                applyVoice();
                 ttsReady = true;
             }
         });
@@ -217,6 +223,41 @@ public class MainActivity extends ComponentActivity {
         });
 
         hideSystemBars();
+    }
+
+    /** French voices, best first: highest quality, installed on the device before network ones. */
+    private List<Voice> frenchVoices() {
+        List<Voice> out = new ArrayList<>();
+        try {
+            for (Voice v : tts.getVoices()) {
+                if (v.getLocale() == null || !"fr".equals(v.getLocale().getLanguage())) continue;
+                if (v.getFeatures() != null && v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                out.add(v);
+            }
+        } catch (Exception ignored) {
+        }
+        out.sort((a, b) -> {
+            int fa = "FR".equals(a.getLocale().getCountry()) ? 1 : 0, fb = "FR".equals(b.getLocale().getCountry()) ? 1 : 0;
+            if (fa != fb) return fb - fa;
+            if (a.getQuality() != b.getQuality()) return b.getQuality() - a.getQuality();
+            boolean na = a.isNetworkConnectionRequired(), nb = b.isNetworkConnectionRequired();
+            if (na != nb) return na ? 1 : -1;
+            return a.getName().compareTo(b.getName());
+        });
+        return out;
+    }
+
+    private void applyVoice() {
+        if (tts == null) return;
+        try {
+            List<Voice> vs = frenchVoices();
+            Voice pick = null;
+            if (wantedVoice != null) for (Voice v : vs) if (v.getName().equals(wantedVoice)) pick = v;
+            if (pick == null && !vs.isEmpty()) pick = vs.get(0);
+            if (pick != null) tts.setVoice(pick);
+            tts.setPitch(1.05f);
+        } catch (Exception ignored) {
+        }
     }
 
     private void hideSystemBars() {
@@ -329,6 +370,48 @@ public class MainActivity extends ComponentActivity {
     }
 
     private class Bridge {
+        @JavascriptInterface
+        public String getVoices() {
+            JSONArray arr = new JSONArray();
+            if (!ttsReady) return arr.toString();
+            try {
+                String current = tts.getVoice() != null ? tts.getVoice().getName() : "";
+                for (Voice v : frenchVoices()) {
+                    JSONObject o = new JSONObject();
+                    o.put("name", v.getName());
+                    o.put("quality", v.getQuality());
+                    o.put("network", v.isNetworkConnectionRequired());
+                    o.put("country", v.getLocale().getCountry());
+                    o.put("current", v.getName().equals(current));
+                    arr.put(o);
+                }
+            } catch (Exception ignored) {
+            }
+            return arr.toString();
+        }
+
+        @JavascriptInterface
+        public void setVoice(String name) {
+            wantedVoice = (name == null || name.isEmpty()) ? null : name;
+            if (ttsReady) applyVoice();
+        }
+
+        @JavascriptInterface
+        public void openTtsSettings() {
+            runOnUiThread(() -> {
+                try {
+                    android.content.Intent i = new android.content.Intent("com.android.settings.TTS_SETTINGS");
+                    i.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                } catch (Exception e) {
+                    try {
+                        startActivity(new android.content.Intent(android.provider.Settings.ACTION_SETTINGS));
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
         @JavascriptInterface
         public boolean ttsAvailable() {
             return ttsReady;

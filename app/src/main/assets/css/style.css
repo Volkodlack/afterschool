@@ -1,5 +1,9 @@
 @font-face { font-family: "Pixel"; src: url(../fonts/pixelify-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
 @font-face { font-family: "Pixel"; src: url(../fonts/pixelify-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "Classic"; src: url(../fonts/lexend-latin-500-normal.woff2) format("woff2"); font-weight: 400 500; }
+@font-face { font-family: "Classic"; src: url(../fonts/lexend-latin-700-normal.woff2) format("woff2"); font-weight: 600 800; }
+@font-face { font-family: "Dys"; src: url(../fonts/opendyslexic-latin-400-normal.woff2) format("woff2"); font-weight: 400 500; }
+@font-face { font-family: "Dys"; src: url(../fonts/opendyslexic-latin-700-normal.woff2) format("woff2"); font-weight: 600 800; }
 @font-face { font-family: "Lecture"; src: url(../fonts/andika-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
 @font-face { font-family: "Lecture"; src: url(../fonts/andika-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
 
@@ -40,7 +44,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; }
 body {
-  font-family: "Pixel", system-ui, sans-serif;
+  font-family: "Classic", system-ui, sans-serif;
   color: var(--ink);
   background: var(--sky);
   user-select: none;
@@ -271,7 +275,7 @@ h2.pix-title { font-size: clamp(22px, 4vmin, 40px); color: #fff; margin: .2em 0 
   font-family: "Lecture"; font-weight: 700; font-size: clamp(20px, 3.8vmin, 38px); box-shadow: inset 3px 3px 0 #fff, inset -3px -4px 0 #b9ad95, 0 4px 0 var(--ink); padding: 0; }
 .key:active, .key.pressed { transform: translateY(3px); box-shadow: inset 3px 3px 0 #fff, inset -3px -4px 0 #b9ad95, 0 1px 0 var(--ink); }
 .key.acc { background: #ffe9b8; }
-.key.wide { flex: 2 1 0; max-width: 180px; font-family: "Pixel"; font-size: clamp(16px, 2.8vmin, 28px); }
+.key.wide { flex: 2 1 0; max-width: 180px; font-family: inherit; font-size: clamp(16px, 2.8vmin, 28px); }
 .key.ok { background: var(--grass); color: #fff; box-shadow: inset 3px 3px 0 var(--grass-hi), inset -3px -4px 0 var(--grass-lo), 0 4px 0 var(--ink); }
 .key.del { background: var(--red); color: #fff; box-shadow: inset 3px 3px 0 #ff8a72, inset -3px -4px 0 var(--red-lo), 0 4px 0 var(--ink); }
 
@@ -762,3 +766,11 @@ body.theme-poney {
   .reader { min-height: 40vh; }
   .zoom-card { width: min(60vw, 80vh, 300px); }
 }
+
+/* pixel theme: classic readable font everywhere except the logo */
+.theme-pixel .logo { font-family: "Pixel"; }
+/* dyslexia-friendly font option */
+body.dys :is(.reader, .reader *, .word-big, .word-big *, .chip, .chip *, .slot, .lblock, .ore span, .choice, .drop, .target-banner, .key, .name-display, .list-row .s, .tc-txt) { font-family: "Dys", "Lecture", sans-serif !important; }
+body.dys .reader { word-spacing: .1em; }
+body.dys .reader { line-height: 2.1; }
+body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }

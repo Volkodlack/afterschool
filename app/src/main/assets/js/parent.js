@@ -102,10 +102,10 @@
   function progres(body) {
     const st = Store.data.stats;
     const lv = Store.level();
-    body.appendChild(el(html`<h2>Progrès</h2>
+    body.appendChild(el(html`<div><h2>Progrès</h2>
       <div class="row" style="font-size:clamp(16px,2.6vmin,24px);gap:24px;margin-bottom:12px">
         <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> ${Theme.t.cur}</span><span><b>${Cards.ownedCount()}</b>/100 cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
-      </div>`));
+      </div></div>`));
     const words = Object.entries(st.words).map(([w, s]) => ({ w, ...s })).filter(x => x.err > 0).sort((a, b) => (b.err / (b.ok + b.err)) - (a.err / (a.ok + a.err))).slice(0, 12);
     body.appendChild(el(html`<h3>Mots les plus difficiles</h3>`));
     body.appendChild(el(words.length ? `<div class="chips">${words.map(x => `<span class="chip" style="animation:none">${esc(x.w)} <small class="muted">${x.err}✗ ${x.ok}✓</small></span>`).join('')}</div>` : '<p class="muted">Rien à signaler pour l\'instant.</p>'));
@@ -126,17 +126,20 @@
 
   function reglages(body) {
     const s = Store.data.settings;
-    body.appendChild(el(html`<h2>Réglages</h2>
+    body.appendChild(el(html`<div><h2>Réglages</h2>
       <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
       <div class="field"><label>Thème de l'appli</label><div class="seg">${Theme.list.map(t => `<button class="pix-btn small ${Theme.id === t.id ? 'on' : ''}" data-theme="${t.id}">${t.name}</button>`).join('')}</div></div>
       <div class="field"><label>Code parent</label><div class="seg"><button class="pix-btn small wood" data-a="pin">${Pixel.svg('lock')} Changer le code</button></div></div>
       <div class="field"><label>Vitesse de la voix</label><div class="seg">
         ${[[0.7, 'Lente'], [0.85, 'Normale'], [1, 'Rapide']].map(([v, l]) => `<button class="pix-btn small ${Math.abs(s.ttsRate - v) < .01 ? 'on' : ''}" data-r="${v}">${l}</button>`).join('')}
         <button class="pix-btn small gold" data-a="test">${Pixel.svg('speaker')} Tester</button></div></div>
+      <div class="field"><label>Voix de lecture <span class="muted" style="font-weight:400">(choisissez celle qui sonne le plus naturel)</span></label><div data-z="voices"></div></div>
+      <div class="field"><label>Police d'écriture</label><div class="seg">
+        <button class="pix-btn small ${!s.dys ? 'on' : ''}" data-dys="0">Normale</button><button class="pix-btn small ${s.dys ? 'on' : ''}" data-dys="1" style="font-family:Dys,sans-serif">Adaptée dyslexie</button></div></div>
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
-      <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p>`));
+      <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p></div>`));
     body.querySelector('[data-a=profile]').onclick = () => UI.go('welcome', { edit: true });
     body.querySelector('[data-a=pin]').onclick = () => UI.createPin();
     body.querySelectorAll('[data-theme]').forEach(b => b.onclick = async () => {
@@ -145,6 +148,33 @@
     });
     body.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { s.ttsRate = +b.dataset.r; Store.save(true); body.querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
     body.querySelector('[data-a=test]').onclick = () => UI.say('Bonjour ' + (s.name || '') + ' ! On va bien travailler aujourd\'hui.');
+    const vz = body.querySelector('[data-z=voices]');
+    const QL = q => q >= 500 ? 'très haute qualité' : q >= 400 ? 'haute qualité' : q >= 300 ? 'qualité normale' : 'qualité basse';
+    const ACC = { CA: ' · accent québécois', BE: ' · accent belge', CH: ' · accent suisse' };
+    function drawVoices(tries = 0) {
+      const vs = Speech.voices();
+      if (!vs.length) {
+        vz.innerHTML = '<p class="muted" style="margin:0">Chargement des voix…</p>';
+        if (tries < 10) setTimeout(() => drawVoices(tries + 1), 500);
+        else vz.innerHTML = '<p class="muted" style="margin:0">Aucune voix française trouvée.</p>';
+        return;
+      }
+      const cur = s.voice || (vs.find(v => v.current) || vs[0]).name;
+      vz.innerHTML = vs.slice(0, 12).map((v, i) => `<div class="list-row"><div class="grow"><div class="t">Voix ${i + 1}${i === 0 ? ' ⭐ recommandée' : ''}</div>
+        <div class="s">${QL(v.quality)} · ${v.network ? 'par internet (souvent la plus naturelle)' : 'sur l\'appareil, marche sans internet'}${ACC[v.country] || ''}</div></div>
+        <button class="pix-btn small gold" data-vt="${esc(v.name)}">${Pixel.svg('speaker')}</button>
+        <button class="pix-btn small ${v.name === cur ? 'on' : ''}" data-vs="${esc(v.name)}">${v.name === cur ? 'Choisie' : 'Choisir'}</button></div>`).join('') +
+        `<div class="row" style="margin-top:8px"><button class="pix-btn small wood" data-a="ttsset">Installer d'autres voix…</button></div>`;
+      vz.querySelectorAll('[data-vt]').forEach(b => b.onclick = () => { Speech.setVoice(b.dataset.vt); UI.say('Le petit poney galope dans la prairie. Il est très content !'); setTimeout(() => Speech.setVoice(s.voice || ''), 6000); });
+      vz.querySelectorAll('[data-vs]').forEach(b => b.onclick = () => { s.voice = b.dataset.vs; Store.save(true); Speech.setVoice(s.voice); UI.say('Bonjour ' + (s.name || '') + ' !'); drawVoices(); });
+      vz.querySelector('[data-a=ttsset]').onclick = () => Speech.openSettings();
+    }
+    drawVoices();
+    body.querySelectorAll('[data-dys]').forEach(b => b.onclick = () => {
+      s.dys = b.dataset.dys === '1'; Store.save(true);
+      document.body.classList.toggle('dys', s.dys);
+      body.querySelectorAll('[data-dys]').forEach(x => x.classList.toggle('on', x === b));
+    });
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
     body.querySelector('[data-a=reset]').onclick = async () => {
       if (await UI.confirm('Effacer toute la progression ? Les listes et les fiches sont gardées.', 'Effacer', 'Annuler')) { Store.resetProgress(); UI.refreshHud(); UI.toast('Progression effacée'); }

@@ -71,6 +71,16 @@
       setTimeout(() => AS_native.ttsEvent('done', id), 300);
       return id;
     },
+    voices() {
+      if (N && N.getVoices) { try { return JSON.parse(N.getVoices()); } catch (e) { return []; } }
+      if ('speechSynthesis' in window) return speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang)).map(v => ({ name: v.name, quality: 300, network: !v.localService, country: (v.lang.split(/[-_]/)[1] || '').toUpperCase(), current: frVoice && frVoice.name === v.name }));
+      return [];
+    },
+    setVoice(name) {
+      if (N && N.setVoice) { try { N.setVoice(name || ''); } catch (e) {} return; }
+      if ('speechSynthesis' in window) { const v = speechSynthesis.getVoices().find(x => x.name === name); if (v) frVoice = v; }
+    },
+    openSettings() { if (N && N.openTtsSettings) N.openTtsSettings(); },
     stop() {
       Object.keys(listeners).forEach(k => delete listeners[k]);
       if (N) { try { N.stopSpeak(); } catch (e) {} }

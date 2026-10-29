@@ -152,6 +152,7 @@
   });
 
   SFX.enabled = Store.data.settings.sound !== false;
+  if (Store.data.settings.voice) Speech.setVoice(Store.data.settings.voice);
   if (Store.data.settings.onboarded && !Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
   else if (Store.data.settings.onboarded) UI.go('home'); else UI.go('welcome', {});
 })();
