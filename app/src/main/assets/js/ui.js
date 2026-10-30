@@ -276,6 +276,7 @@
 
     /* ---------- end-of-game results ---------- */
     results({ title, stars, gems, xp, lines = [], onAgain, onDone }) {
+      if (document.querySelector('.modal .result-stars')) return;
       const reward = Store.addReward(gems, xp);
       SFX.play(stars >= 2 ? 'win' : 'good');
       const m = UI.modal(html`

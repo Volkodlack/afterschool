@@ -33,12 +33,13 @@
     UI.mascotReact(root, 'sad');
   }
 
+  const same = (a, b) => FR.norm(a) === FR.norm(b);
   /* ---------- typing slots ---------- */
   function typer(area, target, { onSubmit, hideLength } = {}) {
     const chars = [...target];
     document.getElementById('screen').classList.add('typing', 'full');
     const slots = el('<div class="slots"></div>');
-    let typed = [];
+    let typed = [], locked = false;
     const editable = chars.map((c, i) => isSep(c) ? -1 : i).filter(i => i >= 0);
     function render() {
       slots.innerHTML = '';
@@ -59,8 +60,11 @@
       onKey(ch) { if (ch === ' ' || ch === "'" || ch === '-') return; if (typed.length < editable.length) { typed.push(ch); render(); } },
       onDel() { typed.pop(); render(); },
       onOk() {
+        if (locked) return;
         if (typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
-        onSubmit(attempt());
+        const a = attempt();
+        if (same(a, target)) locked = true;
+        onSubmit(a);
       }
     });
     function attempt() {
@@ -92,11 +96,22 @@
         typed = kept; render();
       },
       reset() { typed = []; render(); },
-      setFirst(ch) { if (!typed.length) { typed = [ch]; render(); } }
+      setFirst(ch) { if (!typed.length) { typed = [ch]; render(); } },
+      /* reveal: keep the correct beginning, then add the next correct letter */
+      hint() {
+        const lt = [...target.toLowerCase()].filter(c => !isSep(c));
+        let k = 0;
+        while (k < typed.length && typed[k] === lt[k]) k++;
+        if (k >= lt.length) return false;
+        typed = lt.slice(0, k + 1); render();
+        const s = slots.querySelectorAll('.slot.filled:not(.space)');
+        const last = [...slots.querySelectorAll('.slot')].filter(x => x.dataset.ti != null)[k];
+        if (last) { last.classList.add('hinted'); setTimeout(() => last.classList.remove('hinted'), 900); }
+        return true;
+      }
     };
   }
 
-  const same = (a, b) => FR.norm(a) === FR.norm(b);
 
   /* ---------- round implementations: each calls done(errors) ---------- */
   const ROUNDS = {
@@ -283,7 +298,14 @@
           setTimeout(() => { show.classList.add('covered'); t.keepCorrect(); prompt.textContent = 'Essaie encore !'; say(word); }, 2600);
         }
       });
-      hint.onclick = () => { t.setFirst(word[0].toLowerCase()); hint.disabled = true; };
+      let hints = 0;
+      hint.onclick = () => {
+        if (t.hint()) {
+          hints++; if (hints === 1) errors++;
+          SFX.play('pop'); say(word);
+          hint.textContent = 'Indice (' + hints + ')';
+        }
+      };
     }
   };
 
@@ -310,8 +332,10 @@
       const r = rounds[idx];
       root.classList.remove('typing', 'full');
       UI.setTitle(cfg.title + ' — ' + GAMES[r.game].name);
+      let finished = false;
       ROUNDS[r.game](area, r.word, (errors) => {
-        if (!alive) return;
+        if (!alive || finished) return;
+        finished = true;
         Store.recordWord(r.word, errors === 0);
         if (errors === 0) firstTry++;
         results.push({ word: r.word, errors });

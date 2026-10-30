@@ -24,10 +24,32 @@
   const species = () => isPony() ? PONY_SPECIES : PIXEL_SPECIES;
 
   /* ---------------- accessories & food ---------------- */
+  /* [id, name, price, slot] — one item per slot can be worn at the same time */
   const ACC = {
-    pixel: [['bow', 'Nœud rose', 25], ['glasses', 'Lunettes', 30], ['scarf', 'Écharpe', 35], ['flower', 'Fleur', 30], ['hat', 'Chapeau', 50], ['crown', 'Couronne', 80]],
-    poney: [['bow', 'Nœud', 25], ['glasses', 'Lunettes de soleil', 30], ['scarf', 'Écharpe', 35], ['flowers', 'Couronne de fleurs', 40], ['blanket', 'Couverture étoilée', 50], ['crown', 'Couronne royale', 80]]
+    pixel: [
+      ['bow', 'Nœud rose', 120, 'head'], ['flower', 'Fleur', 150, 'head'], ['glasses', 'Lunettes', 180, 'eyes'], ['scarf', 'Écharpe', 200, 'neck'],
+      ['cap', 'Casquette', 220, 'head'], ['bowtie', 'Nœud papillon', 250, 'neck'], ['headphones', 'Casque audio', 300, 'head'], ['eyepatch', 'Cache-œil de pirate', 300, 'eyes'],
+      ['sunglasses', 'Lunettes de soleil', 350, 'eyes'], ['santa', 'Bonnet de Noël', 400, 'head'], ['hat', 'Chapeau haut-de-forme', 450, 'head'], ['bandana', 'Bandana de pirate', 600, 'head'],
+      ['wizard', 'Chapeau de magicien', 700, 'head'], ['viking', 'Casque viking', 850, 'head'], ['necklace', 'Médaille d\'or', 900, 'neck'], ['sparkle', 'Aura d\'étoiles', 1000, 'aura'],
+      ['halo', 'Auréole', 1200, 'head'], ['crown', 'Couronne', 1500, 'head'], ['rainbow', 'Aura arc-en-ciel', 2000, 'aura'], ['diamond', 'Couronne de diamants', 3000, 'head']
+    ],
+    poney: [
+      ['bow', 'Nœud', 120, 'head'], ['flowers', 'Couronne de fleurs', 180, 'head'], ['scarf', 'Écharpe', 200, 'neck'], ['helmet', 'Bombe d\'équitation', 250, 'head'],
+      ['bowtie', 'Nœud papillon', 250, 'neck'], ['glasses', 'Lunettes de soleil', 350, 'eyes'], ['santa', 'Bonnet de Noël', 400, 'head'], ['blanket', 'Couverture étoilée', 450, 'body'],
+      ['heartglasses', 'Lunettes cœur', 500, 'eyes'], ['witch', 'Chapeau de fée', 650, 'head'], ['saddle', 'Selle de concours', 750, 'body'], ['necklace', 'Médaille d\'or', 900, 'neck'],
+      ['tiara', 'Diadème', 950, 'head'], ['sparkle', 'Aura d\'étoiles', 1000, 'aura'], ['halo', 'Auréole', 1200, 'head'], ['crown', 'Couronne royale', 1500, 'head'],
+      ['rainbow', 'Aura arc-en-ciel', 2000, 'aura'], ['horn', 'Corne magique', 2500, 'horn'], ['wings', 'Ailes de pégase', 3000, 'wings']
+    ]
   };
+  const accInfo = id => ACC[Theme.id].find(a => a[0] === id);
+  /* wear: {slot: id}; older saves stored a single string */
+  function wearOf(p) {
+    let w = p.wear;
+    if (!w) return {};
+    if (typeof w === 'string') { const a = accInfo(w); w = a ? { [a[3]]: w } : {}; p.wear = w; }
+    return w;
+  }
+  const wornIds = p => Object.values(wearOf(p)).filter(Boolean);
   const FOOD = {
     pixel: [['apple', 'Pomme', 2, 20, 0], ['bread', 'Pain', 3, 30, 0], ['fish', 'Poisson', 4, 40, 0], ['cookie', 'Cookie', 3, 15, 15], ['melon', 'Pastèque', 5, 35, 10], ['cake', 'Gâteau', 8, 60, 25]],
     poney: [['carrot', 'Carotte', 2, 20, 0], ['apple', 'Pomme', 3, 30, 0], ['hay', 'Foin', 4, 40, 0], ['sugar', 'Sucre', 3, 15, 15], ['cookie', 'Biscuit', 5, 35, 10], ['cupcake', 'Gâteau', 8, 60, 25]]
@@ -49,8 +71,10 @@
 
   /* ---------------- pixel pet renderer ---------------- */
   const cache = {};
-  function pixelPet(sp, mood, acc) {
-    const key = sp + mood + acc;
+  function pixelPet(sp, mood, accs) {
+    accs = accs || [];
+    const has = id => accs.includes(id);
+    const key = sp + mood + accs.slice().sort().join(',');
     if (cache[key]) return cache[key];
     const S = PIXEL_SPECIES[sp];
     const W = 24, H = 24;
@@ -87,12 +111,24 @@
     else { P(11, 15, 3); P(12, 15, 3); P(10, 14, 3); P(13, 14, 3); }
     if (mood === 'sad') { P(17, 14, 12); P(17, 15, 12); }
     // accessories
-    if (acc === 'bow') { [[4, 5], [5, 6], [6, 6], [7, 5], [5, 4], [6, 4], [4, 7], [7, 7]].forEach(([x, y]) => P(x, y + 1, 5)); P(5, 6, 13); P(6, 6, 13); }
-    if (acc === 'glasses') { for (let x = 6; x < 10; x++) { P(x, 11, 3); P(x, 14, 3); } for (let x = 14; x < 18; x++) { P(x, 11, 3); P(x, 14, 3); } [6, 9, 14, 17].forEach(x => { P(x, 12, 3); P(x, 13, 3); }); P(10, 12, 3); P(11, 12, 3); P(12, 12, 3); P(13, 12, 3); }
-    if (acc === 'scarf') { for (let x = 6; x < 18; x++) { P(x, 18, 14); P(x, 19, 14); } P(16, 20, 14); P(17, 20, 14); P(16, 21, 14); P(17, 21, 14); }
-    if (acc === 'flower') { [[15, 5], [17, 5], [16, 4], [16, 6]].forEach(([x, y]) => P(x, y, 5)); P(16, 5, 10); }
-    if (acc === 'hat') { for (let x = 6; x < 18; x++) P(x, 7, 3); for (let y = 1; y < 7; y++) for (let x = 8; x < 16; x++) P(x, y, 3); for (let x = 8; x < 16; x++) P(x, 5, 8); }
-    if (acc === 'crown') { for (let x = 7; x < 17; x++) { P(x, 6, 10); P(x, 7, 10); } [7, 10, 13, 16].forEach(x => { P(x, 5, 10); P(x, 4, 10); }); P(11.5 | 0, 6, 8); P(8, 6, 13); P(15, 6, 13); }
+    if (has('bow')) { [[4, 5], [5, 6], [6, 6], [7, 5], [5, 4], [6, 4], [4, 7], [7, 7]].forEach(([x, y]) => P(x, y + 1, 5)); P(5, 6, 13); P(6, 6, 13); }
+    if (has('glasses')) { for (let x = 6; x < 10; x++) { P(x, 11, 3); P(x, 14, 3); } for (let x = 14; x < 18; x++) { P(x, 11, 3); P(x, 14, 3); } [6, 9, 14, 17].forEach(x => { P(x, 12, 3); P(x, 13, 3); }); P(10, 12, 3); P(11, 12, 3); P(12, 12, 3); P(13, 12, 3); }
+    if (has('sunglasses')) { for (let y = 11; y < 14; y++) { for (let x = 6; x < 10; x++) P(x, y, 19); for (let x = 14; x < 18; x++) P(x, y, 19); } P(7, 11, 15); P(15, 11, 15); for (let x = 10; x < 14; x++) P(x, 11, 3); P(5, 11, 3); P(18, 11, 3); }
+    if (has('eyepatch')) { for (let y = 11; y < 15; y++) for (let x = 14; x < 18; x++) P(x, y, 3); for (let i = 0; i < 9; i++) P(5 + i, 8 + Math.floor(i / 3), 3); P(18, 11, 3); P(19, 10, 3); }
+    if (has('scarf')) { for (let x = 6; x < 18; x++) { P(x, 18, 14); P(x, 19, 14); } P(16, 20, 14); P(17, 20, 14); P(16, 21, 14); P(17, 21, 14); [7, 10, 13, 16].forEach(x => P(x, 18, 15)); }
+    if (has('bowtie')) { P(9, 18, 8); P(9, 19, 8); P(9, 20, 8); P(10, 19, 8); P(10, 18, 8); P(10, 20, 8); P(11, 19, 13); P(12, 19, 13); P(13, 18, 8); P(13, 19, 8); P(13, 20, 8); P(14, 18, 8); P(14, 19, 8); P(14, 20, 8); }
+    if (has('necklace')) { for (let x = 7; x < 17; x++) P(x, 18 + (x > 9 && x < 14 ? 1 : 0), 10); P(11, 20, 10); P(12, 20, 10); P(11, 21, 10); P(12, 21, 10); }
+    if (has('flower')) { [[15, 5], [17, 5], [16, 4], [16, 6]].forEach(([x, y]) => P(x, y, 5)); P(16, 5, 10); }
+    if (has('cap')) { for (let y = 4; y < 8; y++) for (let x = 7; x < 17; x++) P(x, y, 12); for (let x = 15; x < 21; x++) P(x, 7, 19); P(11, 3, 12); P(12, 3, 12); P(11, 5, 15); P(12, 5, 15); }
+    if (has('headphones')) { for (let x = 6; x < 18; x++) P(x, 4, 16); P(5, 5, 16); P(18, 5, 16); for (let y = 6; y < 11; y++) { P(4, y, 16); P(19, y, 16); } for (let y = 10; y < 15; y++) { P(2, y, 3); P(3, y, 3); P(4, y, 8); P(19, y, 8); P(20, y, 3); P(21, y, 3); } }
+    if (has('santa')) { for (let y = 3; y < 7; y++) for (let x = 7 + (6 - y); x < 17; x++) P(x, y, 8); for (let x = 15; x < 19; x++) P(x, 2, 8); for (let x = 6; x < 18; x++) { P(x, 7, 15); P(x, 6, 15); } P(19, 1, 15); P(20, 1, 15); P(19, 2, 15); P(20, 2, 15); }
+    if (has('hat')) { for (let x = 6; x < 18; x++) P(x, 7, 3); for (let y = 1; y < 7; y++) for (let x = 8; x < 16; x++) P(x, y, 3); for (let x = 8; x < 16; x++) P(x, 5, 8); }
+    if (has('bandana')) { for (let y = 5; y < 9; y++) for (let x = 6; x < 18; x++) if (y > 5 || (x > 7 && x < 16)) P(x, y, 8); [8, 11, 14, 16].forEach(x => P(x, 7, 15)); P(18, 8, 8); P(19, 9, 8); P(20, 10, 8); P(19, 8, 8); }
+    if (has('wizard')) { for (let y = 0; y < 7; y++) for (let x = 12 - Math.floor(y / 1.5); x <= 12 + Math.floor(y / 1.5); x++) P(x, y, 17); for (let x = 4; x < 20; x++) P(x, 7, 17); P(11, 4, 10); P(12, 3, 10); P(13, 5, 10); }
+    if (has('viking')) { for (let y = 4; y < 8; y++) for (let x = 7; x < 17; x++) P(x, y, 16); for (let x = 6; x < 18; x++) P(x, 7, 10); P(12, 3, 16); P(11, 3, 16); for (let k = 0; k < 4; k++) { P(5 - Math.floor(k / 2), 6 - k, 15); P(18 + Math.floor(k / 2), 6 - k, 15); P(6 - Math.floor(k / 2), 6 - k, 15); P(17 + Math.floor(k / 2), 6 - k, 15); } }
+    if (has('halo')) { for (let x = 9; x < 15; x++) { P(x, 0, 10); P(x, 2, 10); } P(8, 1, 10); P(15, 1, 10); }
+    if (has('crown')) { for (let x = 7; x < 17; x++) { P(x, 6, 10); P(x, 7, 10); } [7, 10, 13, 16].forEach(x => { P(x, 5, 10); P(x, 4, 10); }); P(11, 6, 8); P(8, 6, 13); P(15, 6, 13); }
+    if (has('diamond')) { for (let x = 6; x < 18; x++) { P(x, 6, 15); P(x, 7, 10); } for (let y = 2; y < 6; y++) { [6, 9, 12, 15, 17].forEach(x => P(x, y + (x % 2), 10)); } [[8, 6], [11, 5], [14, 6]].forEach(([x, y]) => { P(x, y, 12); P(x + 1, y, 12); }); P(12, 2, 12); P(12, 1, 15); }
     // outline
     const o = g.map(r => r.slice());
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -101,7 +137,7 @@
     }
     const [h, s, l] = S.body;
     const body = `hsl(${h},${s}%,${l}%)`, dark = `hsl(${h},${s}%,${l - 13}%)`, light = `hsl(${h},${s}%,${Math.min(96, l + 12)}%)`;
-    const col = { 2: S.belly, 3: '#1a120b', 4: '#ffffff', 5: '#ff8fb1', 6: `hsl(${h},${s}%,${l - 20}%)`, 7: '#ffb3c7', 8: '#e5533d', 9: '#2b1d12', 10: '#f5c542', 11: S.ears === 'wool' ? '#ffffff' : '#ffffff', 12: '#7ec8f5', 13: '#e5533d', 14: '#e5533d' };
+    const col = { 2: S.belly, 3: '#1a120b', 4: '#ffffff', 5: '#ff8fb1', 6: `hsl(${h},${s}%,${l - 20}%)`, 7: '#ffb3c7', 8: '#e5533d', 9: '#2b1d12', 10: '#f5c542', 11: S.ears === 'wool' ? '#ffffff' : '#ffffff', 12: '#7ec8f5', 13: '#e5533d', 14: '#e5533d', 15: '#ffffff', 16: '#a8a8b4', 17: '#7b4cc4', 19: '#2b2b44' };
     if (S.ears === 'fox') col[10] = '#2b1d12';
     if (sp === 'mouton') { col[2] = '#f6efe6'; }
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -115,19 +151,26 @@
     }
     return (cache[key] = cv.toDataURL());
   }
-  function ponyPet(sp, acc) {
+  function ponyPet(sp, accs) {
     const o = Object.assign({}, PONY_SPECIES[sp].o);
-    if (acc === 'bow') o.bow = '#7ec8f5';
-    if (acc === 'glasses') o.glasses = true;
-    if (acc === 'scarf') o.scarf = '#ff8fb1';
-    if (acc === 'flowers') o.flowers = true;
-    if (acc === 'blanket') o.blanket = '#6a5cb8';
-    if (acc === 'crown') o.crown = true;
+    (accs || []).forEach(id => {
+      if (id === 'bow') o.bow = '#7ec8f5';
+      else if (id === 'glasses') o.glasses = true;
+      else if (id === 'scarf') o.scarf = '#ff8fb1';
+      else if (id === 'flowers') o.flowers = true;
+      else if (id === 'blanket') o.blanket = '#6a5cb8';
+      else if (id === 'saddle') { o.saddle = '#3d7be5'; o.rosette = '#ffe066'; }
+      else if (id === 'crown') o.crown = true;
+      else if (id === 'horn') o.horn = true;
+      else if (id === 'wings') o.wings = true;
+      else o[id] = true;
+    });
     return Theme.ponySVG(Object.assign({ cls: 'pet-svg' }, o), true);
   }
   function petMarkup(p, mood) {
-    if (isPony()) return ponyPet(p.species, p.wear);
-    return `<img class="pet-img" src="${pixelPet(p.species, mood || 'idle', p.wear || '')}" alt="">`;
+    const accs = p.wear ? wornIds(p) : [];
+    if (isPony()) return ponyPet(p.species, accs);
+    return `<img class="pet-img" src="${pixelPet(p.species, mood || 'idle', accs)}" alt="">`;
   }
 
   /* ---------------- state ---------------- */
@@ -173,7 +216,7 @@
       <div class="pet-scene">
         <div class="pet-bubble"></div>
         <div class="pet-floor"></div>
-        <div class="pet stage-${stage(p)}"><div class="pet-body">${petMarkup(p, mood(p))}</div></div>
+        <div class="pet stage-${stage(p)} ${auraCls(p)}"><div class="pet-body">${petMarkup(p, mood(p))}</div></div>
         <div class="pet-fx"></div>
       </div>
       <div class="pet-bars">
@@ -196,7 +239,7 @@
       ['hunger', 'joy', 'clean'].forEach(k => { const b = w.querySelector(`[data-bar=${k}] i`); b.style.width = p[k] + '%'; b.parentElement.classList.toggle('low', p[k] < 30); });
       w.querySelector('.stars-chip b').textContent = stars();
       w.querySelector('.pet-lvl').textContent = 'Niv. ' + level(p);
-      petEl.className = 'pet stage-' + stage(p);
+      petEl.className = 'pet stage-' + stage(p) + ' ' + auraCls(p);
       w.querySelectorAll('.dirt').forEach(d => d.remove());
       if (p.clean < 50) for (let i = 0; i < (p.clean < 25 ? 4 : 2); i++) { const d = el('<i class="dirt"></i>'); d.style.left = (30 + Math.random() * 40) + '%'; d.style.top = (40 + Math.random() * 35) + '%'; petEl.appendChild(d); }
       UI.refreshHud();
@@ -297,30 +340,41 @@
       scene.onpointerup = scene.onpointercancel = () => { scene._rub = false; };
     };
 
-    w.querySelector('[data-a=shop]').onclick = () => shop(() => { const nw = widget(); w.replaceWith(nw); });
+    w.querySelector('[data-a=shop]').onclick = () => shop(() => { const host = document.querySelector('.home-pet'); if (host) { host.innerHTML = ''; host.appendChild(widget()); } });
     return w;
   }
+  function auraCls(p) { const a = wearOf(p).aura; return a ? 'aura-' + a : ''; }
   function bar(k, label, v) { return `<div class="pbar" data-bar="${k}"><span>${label}</span><div class="pbar-track"><i style="width:${v}%"></i></div></div>`; }
 
   /* ---------------- shop ---------------- */
+  const SLOT_NAMES = { head: 'Tête', eyes: 'Yeux', neck: 'Cou', body: 'Dos', aura: 'Aura', horn: 'Corne', wings: 'Ailes' };
   function shop(onChange) {
     const p = pet();
     p.owned = p.owned || [];
+    const w = wearOf(p);
     const m = UI.modal(html`<h2 style="display:flex;align-items:center;gap:10px"><span style="width:1.3em;height:1.3em;display:inline-flex">${Pixel.svg('chest')}</span> Boutique de ${esc(p.name)}</h2>
-      <p style="margin-top:0">Tu as <b>${stars()}</b> étoiles. Gagne-en en faisant tes exercices !</p>
+      <div class="shop-top"><div class="shop-me ${auraCls(p)}">${petMarkup(p, 'happy')}</div>
+        <p style="margin:0">Tu as <b class="shop-stars">${stars()}</b> étoiles.<br><small>Gagne-en en faisant tes exercices. Tu peux porter un objet par partie du corps !</small></p></div>
       <div class="shop-grid"></div>
       <div class="row end" style="margin-top:12px"><button class="pix-btn green" data-x>Fermer</button></div>`, { cls: 'wide', onClose: onChange });
     const grid = m.querySelector('.shop-grid');
-    ACC[Theme.id].forEach(([id, name, price]) => {
-      const owned = p.owned.includes(id), worn = p.wear === id;
-      const preview = Object.assign({}, p, { wear: id });
-      const b = el(`<div class="shop-item ${worn ? 'worn' : ''}"><div class="shop-prev">${petMarkup(preview, 'happy')}</div><b>${name}</b>
-        ${owned ? `<button class="pix-btn small ${worn ? '' : 'green'}">${worn ? 'Enlever' : 'Mettre'}</button>` : `<button class="pix-btn small gold">${starIcon()} ${price}</button>`}</div>`);
-      b.querySelector('button').onclick = () => {
+    ACC[Theme.id].forEach(([id, name, price, slot]) => {
+      const owned = p.owned.includes(id), worn = w[slot] === id;
+      const preview = Object.assign({}, p, { wear: Object.assign({}, w, { [slot]: id }) });
+      const pct = Math.min(100, Math.round(stars() / price * 100));
+      const b = el(`<div class="shop-item ${worn ? 'worn' : ''} ${owned ? 'owned' : ''}">
+        <span class="slot-tag">${SLOT_NAMES[slot]}</span>
+        <div class="shop-prev ${slot === 'aura' ? 'aura-' + id : ''}">${petMarkup(preview, 'happy')}</div><b>${name}</b>
+        ${owned ? `<button class="pix-btn small ${worn ? '' : 'green'}">${worn ? 'Enlever' : 'Mettre'}</button>`
+          : `<button class="pix-btn small gold"><span style="width:1.1em;display:inline-flex">${starIcon()}</span> ${price}</button>
+             ${pct < 100 ? `<div class="save-bar"><i style="width:${pct}%"></i></div><small>${price - stars()} de plus</small>` : ''}`}</div>`);
+      b.querySelector('button').onclick = async () => {
         if (!owned) {
-          if (stars() < price) { UI.shake(b); SFX.play('bad'); UI.toast(`Il te faut ${price} étoiles`); return; }
-          Store.data.stats.stars -= price; p.owned.push(id); p.wear = id; SFX.play('level'); UI.confetti();
-        } else p.wear = worn ? null : id;
+          if (stars() < price) { UI.shake(b); SFX.play('bad'); UI.toast(`Encore ${price - stars()} étoiles à gagner !`); return; }
+          if (!(await UI.confirm(`Acheter « ${name} » pour ${price} étoiles ?`, 'Oui !', 'Non'))) return;
+          Store.data.stats.stars -= price; p.owned.push(id); w[slot] = id; SFX.play('level'); UI.confetti();
+        } else w[slot] = worn ? null : id;
+        p.wear = w;
         Store.save(true); UI.closeModal(); shop(onChange);
       };
       grid.appendChild(b);
