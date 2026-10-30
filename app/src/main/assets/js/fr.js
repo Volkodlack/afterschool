@@ -279,5 +279,38 @@
   /* render with the chosen reading help: 'syl' | 'snd' | '' */
   function helpHTML(text, mode) { return mode === 'syl' ? colorize(text) : mode === 'snd' ? soundsHTML(text) : esc(text); }
 
+  /* couleurs des sons complexes, réglables par le parent */
+  const SOUND_GROUPS = [
+    ['ou', 'ou', 'loup, poule', ['ou'], '#1e9e52'],
+    ['o', 'o (au, eau)', 'chaud, bateau', ['o'], '#d9731a'],
+    ['oi', 'oi', 'roi, voiture', ['oi'], '#8e3fc9'],
+    ['an', 'an (en, am, em)', 'maman, enfant', ['an'], '#b5462f'],
+    ['on', 'on (om)', 'bonbon, pompier', ['on'], '#1f5fd1'],
+    ['in', 'in (ain, ein, un)', 'lapin, pain', ['in'], '#d13f86'],
+    ['oin', 'oin', 'coin, loin', ['oin'], '#7a4fd1'],
+    ['ai', 'è / é (ai, ei, er, ez, et)', 'maison, nez', ['ai'], '#a77b00'],
+    ['eu', 'eu (œu)', 'feu, cœur', ['eu'], '#13878a'],
+    ['ill', 'ill', 'fille, papillon', ['ill'], '#6b3398'],
+    ['cons', 'ch, gn, ph, qu', 'chat, montagne', ['ch', 'gn', 'ph', 'qu'], '#c0392b'],
+    ['mute', 'lettres muettes', 'petit, grand', ['mute'], '#b3aaa0']
+  ];
+  const SOUND_PALETTE = ['#1e9e52', '#5c940d', '#13878a', '#0b7285', '#1f5fd1', '#3b5bdb', '#7a4fd1', '#8e3fc9', '#6b3398', '#d13f86',
+    '#e03131', '#c0392b', '#b5462f', '#d9731a', '#a77b00', '#7c5c00', '#2b2b2b', '#b3aaa0'];
+  function hexA(h, a) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+  function applySoundColors(map) {
+    map = map || {};
+    let css = '';
+    SOUND_GROUPS.forEach(([id, , , cls, def]) => {
+      const c = map[id]; if (!c || c === def) return;
+      cls.forEach(k => {
+        css += k === 'mute' ? `.snd-mute{color:${c}}` : `.snd-${k}{color:${c};background:${hexA(c, .14)}}`;
+      });
+    });
+    let st = document.getElementById('snd-colors');
+    if (!st) { st = document.createElement('style'); st.id = 'snd-colors'; document.head.appendChild(st); }
+    st.textContent = css;
+  }
+  window.SoundColors = { groups: SOUND_GROUPS, palette: SOUND_PALETTE, apply: applySoundColors };
+
   window.FR = { soundsHTML, helpHTML, esc, norm, syllables, sylWord, colorize, misspellings, holes, pickHoles, parseWords, guessType, countWords, shuffle, isL, isV };
 })();

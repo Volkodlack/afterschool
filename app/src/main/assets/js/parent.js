@@ -147,6 +147,7 @@
       <div class="field"><label>Voix de lecture <span class="muted" style="font-weight:400">(choisissez celle qui sonne le plus naturel)</span></label><div data-z="voices"></div></div>
       <div class="field"><label>Police d'écriture</label><div class="seg">
         <button class="pix-btn small ${!s.dys ? 'on' : ''}" data-dys="0">Normale</button><button class="pix-btn small ${s.dys ? 'on' : ''}" data-dys="1" style="font-family:Dys,sans-serif">Adaptée dyslexie</button></div></div>
+      <div class="field"><label>Couleurs des sons complexes <span class="muted" style="font-weight:400">(aide « Sons complexes » de la lecture)</span></label><div data-z="sndc"></div></div>
       <div class="field"><label>Notifications du compagnon</label><div class="seg">
         <button class="pix-btn small ${Store.global.notif !== false ? 'on' : ''}" data-n="1">Activées</button><button class="pix-btn small ${Store.global.notif === false ? 'on' : ''}" data-n="0">Coupées</button></div>
         <p class="muted" style="margin:6px 0 0;font-weight:400;font-size:clamp(13px,1.9vmin,17px)">Le compagnon prévient quand il a faim, est sale ou s'ennuie (entre 8 h et 20 h, au plus une fois toutes les 3 heures), et rappelle les devoirs en fin de journée. Pour le widget : appui long sur l'écran d'accueil de la tablette › Widgets › After School.</p></div>
@@ -171,6 +172,21 @@
       kz.querySelector('[data-a=addkid]').onclick = () => Store.createProfile();
     }
     drawKids();
+    const sz = body.querySelector('[data-z=sndc]');
+    function drawSnd() {
+      const map = s.sndColors || {};
+      sz.innerHTML = SoundColors.groups.map(([id, name, ex, , def]) => {
+        const cur = map[id] || def;
+        return `<div class="snd-row"><div class="snd-name"><b>${esc(name)}</b><span class="snd-ex">${FR.soundsHTML(ex)}</span></div>
+          <div class="snd-sw">${SoundColors.palette.map(c => `<button class="sw ${c === cur ? 'on' : ''}" data-g="${id}" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div></div>`;
+      }).join('') + `<div class="row" style="margin-top:8px"><button class="pix-btn small wood" data-a="sndreset">Couleurs par défaut</button></div>`;
+      sz.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
+        s.sndColors = Object.assign({}, s.sndColors, { [b.dataset.g]: b.dataset.c }); Store.save(true);
+        SoundColors.apply(s.sndColors); drawSnd();
+      });
+      sz.querySelector('[data-a=sndreset]').onclick = () => { s.sndColors = {}; Store.save(true); SoundColors.apply({}); drawSnd(); };
+    }
+    drawSnd();
     body.querySelector('[data-a=pin]').onclick = () => UI.createPin();
     body.querySelectorAll('[data-theme]').forEach(b => b.onclick = async () => {
       if (b.dataset.theme === Theme.id) return;

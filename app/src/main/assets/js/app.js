@@ -180,6 +180,7 @@
   });
 
   SFX.enabled = Store.data.settings.sound !== false;
+  SoundColors.apply(Store.data.settings.sndColors);
   if (Store.data.settings.voice) Speech.setVoice(Store.data.settings.voice);
   if (Store.data.settings.onboarded && !Store.data.settings.avatarImg) { try { Store.data.settings.avatarImg = Avatar.img(Store.data.settings.avatar); Store.save(true); } catch (e) {} }
   const G = Store.global;

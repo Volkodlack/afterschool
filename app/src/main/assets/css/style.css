@@ -1152,3 +1152,12 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 .rc-missed { justify-content: center; }
 .rc-missed .chip { cursor: pointer; font: inherit; color: #d63a2a; }
 .theme-poney .reader .w.rc-next { background: #ffe0f0; box-shadow: 0 0 0 3px #ffe0f0; }
+
+/* ---------- réglage des couleurs des sons ---------- */
+.snd-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0; border-bottom: 2px dashed rgba(43,29,18,.12); font-weight: 400; }
+.snd-name { display: flex; flex-direction: column; min-width: clamp(150px, 26vmin, 260px); }
+.snd-name b { font-size: clamp(14px, 2vmin, 19px); }
+.snd-ex { font-family: "Lecture"; font-size: clamp(18px, 2.8vmin, 26px); }
+.snd-sw { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.snd-sw .sw { width: clamp(26px, 3.6vmin, 36px); height: clamp(26px, 3.6vmin, 36px); border: 3px solid rgba(43,29,18,.35); border-radius: 50%; padding: 0; cursor: pointer; }
+.snd-sw .sw.on { border-color: var(--ink); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); transform: scale(1.08); }
