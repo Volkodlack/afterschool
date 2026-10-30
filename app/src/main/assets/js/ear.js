@@ -103,6 +103,16 @@
   window.Ear = {
     available() { try { return !!(N && N.asrAvailable && N.asrAvailable()); } catch (e) { return false; } },
     listen, match, toks,
+    /* hideFn(li, wi, w, nw) -> null (mot visible) ou texte du trou. Sans hideFn : tout est caché. */
+    revealHTML(res, { showAll = false, hideFn = null } = {}) {
+      const E = FR.esc;
+      return res.lines.map((l, li) => `<div class="pl ear-line">${l.words.map((x, wi) => {
+        const g = hideFn ? hideFn(li, wi, x.w, l.words.length) : '_'.repeat(Math.min(10, x.w.length));
+        const cls = x.ok ? 'ok' : showAll ? 'miss' : g == null ? 'vis' : 'hid';
+        const txt = x.ok || showAll || g == null ? x.w : g;
+        return `<span class="ew ${cls}" data-w="${E(x.w)}"${g == null ? '' : ` data-g="${E(g)}"`}>${E(txt)}</span>`;
+      }).join(' ')}</div>`).join('');
+    },
     /* met à jour les mots déjà affichés sans tout redessiner (l'animation ne joue que sur les nouveaux mots) */
     update(box, res) {
       const lines = box.querySelectorAll('.ear-line');
@@ -111,15 +121,13 @@
         l.words.forEach((x, wi) => {
           const sp = spans[wi]; if (!sp) return;
           const ok = sp.classList.contains('ok');
-          if (x.ok && !ok) { sp.className = 'ew ok'; sp.textContent = x.w; }
-          else if (!x.ok && ok) { sp.className = 'ew hid'; sp.textContent = '_'.repeat(Math.min(10, x.w.length)); }
+          if (x.ok && !ok) { sp.className = 'ew ok'; sp.textContent = sp.dataset.w; }
+          else if (!x.ok && ok) {
+            if (sp.dataset.p || sp.dataset.g == null) { sp.className = 'ew vis'; sp.textContent = sp.dataset.w; }
+            else { sp.className = 'ew hid'; sp.textContent = sp.dataset.g; }
+          }
         });
       });
-    },
-    /* HTML of lines where words appear as they are recited */
-    revealHTML(res, { showAll = false, cls = '' } = {}) {
-      return res.lines.map(l => `<div class="pl ear-line ${cls}">${l.words.map(x => x.ok ? `<span class="ew ok">${FR.esc(x.w)}</span>`
-        : showAll ? `<span class="ew miss">${FR.esc(x.w)}</span>` : `<span class="ew hid">${'_'.repeat(Math.min(10, x.w.length))}</span>`).join(' ')}</div>`).join('');
     }
   };
 })();

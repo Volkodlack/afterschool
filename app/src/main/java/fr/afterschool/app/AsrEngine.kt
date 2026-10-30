@@ -24,8 +24,8 @@ import java.nio.ByteOrder
  */
 class AsrEngine(private val ctx: Context, private val emit: (String) -> Unit) {
     private var recognizer: OnlineRecognizer? = null
-    @Volatile private var running = false
-    @Volatile private var cancelled = false
+    @Volatile private var gen = 0       // current session; changing it cancels the running one
+    @Volatile private var stopGen = -1  // session asked to stop (and deliver its final text)
     private var thread: Thread? = null
 
     fun available(): Boolean = try {
@@ -63,12 +63,13 @@ class AsrEngine(private val ctx: Context, private val emit: (String) -> Unit) {
 
     @SuppressLint("MissingPermission")
     fun start(id: String) {
-        if (running) stop()
-        thread?.join(3000)
-        running = true; cancelled = false
+        val my = ++gen
+        val prev = thread
         thread = Thread {
             var rec: AudioRecord? = null
             try {
+                try { prev?.join(3000) } catch (_: Exception) {}
+                if (gen != my) return@Thread
                 emit("AS_native.asrState(${q(id)}, 'loading')")
                 val r = load()
                 val sr = 16000
@@ -85,7 +86,7 @@ class AsrEngine(private val ctx: Context, private val emit: (String) -> Unit) {
                 var lastEmit = 0L
                 rec.startRecording()
                 emit("AS_native.asrState(${q(id)}, 'listening')")
-                while (running) {
+                while (gen == my && stopGen != my) {
                     val n = rec.read(buf, 0, buf.size)
                     if (n <= 0) continue
                     val f = FloatArray(n) { buf[it] / 32768f }
@@ -117,22 +118,21 @@ class AsrEngine(private val ctx: Context, private val emit: (String) -> Unit) {
                 val tail = r.getResult(stream).text.trim()
                 if (tail.isNotEmpty()) done.append(tail)
                 stream.release()
-                if (cancelled) return@Thread
+                if (gen != my) return@Thread
                 val wav = wavBytes(pcm.toByteArray(), sr)
                 emit("AS_native.onAsrAudio(${q(id)}, '${Base64.encodeToString(wav, Base64.NO_WRAP)}')")
                 emit("AS_native.onAsr(${q(id)}, ${q(done.toString().trim())}, true)")
             } catch (e: Throwable) {
-                running = false
-                emit("AS_native.asrError(${q(id)}, ${q(e.message ?: "error")})")
+                if (gen == my) emit("AS_native.asrError(${q(id)}, ${q(e.message ?: "error")})")
             } finally {
                 try { rec?.release() } catch (_: Exception) {}
             }
         }.also { it.start() }
     }
 
-    fun stop() { running = false }
+    fun stop() { stopGen = gen }
 
-    fun cancel() { cancelled = true; running = false }
+    fun cancel() { gen++ }
 
     private fun wavBytes(data: ByteArray, sr: Int): ByteArray {
         val h = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)

@@ -143,11 +143,11 @@
   /* ---------------- hub ---------------- */
   const ACTS = [
     ['listen', '🎧', 'Écouter', 'Écoute et comprends la poésie'],
-    ['voices', '🤖', 'Les voix rigolotes', 'Répète avec des voix lente, rapide, robot'],
+    ['voices', '🤖', 'Les voix rigolotes', 'Répète à voix haute avec des voix lente, rapide, robot'],
     ['snow', '❄️', 'Boule de neige', 'Vers par vers, en ajoutant le suivant'],
     ['erase', '🧽', 'La poésie s\'efface', 'Les rimes, puis les mots, disparaissent'],
-    ['complete', '🎯', 'Complète le vers', 'Trouve le mot de la rime'],
-    ['next', '➡️', 'Le vers suivant', 'Quel vers vient après ?'],
+    ['complete', '🎯', 'Complète le vers', 'Dis le mot de la rime'],
+    ['next', '➡️', 'Le vers suivant', 'Dis le vers qui vient après'],
     ['order', '🔀', 'Vers mélangés', 'Remets la strophe dans l\'ordre'],
     ['draw', '🎨', 'Dessine la strophe', 'Une image pour s\'en souvenir'],
     ['recite', '🎤', 'Je récite', 'Je t\'écoute et je vérifie']
@@ -213,32 +213,65 @@
 
     /* --- l'IA écoute : les mots apparaissent quand ils sont récités --- */
     const EAR = Ear.available();
-    function earPanel(box, lineIdxs, { onEnd, auto = true }) {
-      const texts = lineIdxs.map(i => all[i].t);
-      box.innerHTML = `<div class="ear-status"><span class="ear-mic">🎤</span><span class="st">Je prépare mes oreilles…</span></div><div class="poem-text ear-box">${Ear.revealHTML(Ear.match(texts, ''))}</div>`;
+    /* panneau d'écoute : statut du micro + texte dont les mots s'allument quand ils sont dits.
+       Les mots déjà dits restent acquis même si l'écoute est mise en pause (pendant que l'appli parle). */
+    function earPanel(box, lineIdxs, { onEnd, auto = true, pass = 0.85, hideFn = null, onPeek = null, noBox = false, paused = false,
+      label = 'Je t\'écoute ! Vas-y, récite…' }) {
+      const texts = lineIdxs.map(i => typeof i === 'number' ? all[i].t : i);
+      let acc = Ear.match(texts, '');
+      box.innerHTML = `<div class="ear-status"><span class="ear-mic">🎤</span><span class="st">Je prépare mes oreilles…</span></div>${noBox ? '' : `<div class="poem-text ear-box">${Ear.revealHTML(acc, { hideFn })}</div>`}`;
       const eb = box.querySelector('.ear-box'), st = box.querySelector('.st');
-      let ended = false, passT = 0;
-      const sess = Ear.listen({
-        onState(x) { if (x === 'listening') { st.textContent = 'Je t\'écoute ! Vas-y, récite…'; box.classList.add('listening'); } },
-        onText(t) {
-          const r = Ear.match(texts, t);
-          Ear.update(eb, r);
-          const last = r.lines[r.lines.length - 1];
-          if (auto && r.score >= 0.85 && last.score >= 0.6 && !passT) passT = setTimeout(finish, 900);
-        },
-        onError(m) { st.textContent = m === 'mic' ? 'Le micro n\'est pas autorisé 😕' : 'Oups, je n\'arrive pas à écouter.'; box.classList.remove('listening'); }
+      if (eb) eb.addEventListener('click', e => {
+        const sp = e.target.closest('.ew.hid'); if (!sp) return;
+        sp.dataset.p = 1; sp.className = 'ew vis'; sp.textContent = sp.dataset.w; onPeek && onPeek();
       });
+      const merge = r => {
+        let tot = 0, ok = 0;
+        r.lines.forEach((l, li) => {
+          l.words.forEach((x, wi) => { if (acc.lines[li].words[wi].ok) x.ok = true; });
+          const n = l.words.filter(x => x.ok).length; l.score = l.words.length ? n / l.words.length : 1; tot += l.words.length; ok += n;
+        });
+        r.score = tot ? ok / tot : 0;
+        return r;
+      };
+      let sess = null, lastText = '', ended = false, passT = 0;
+      function begin() {
+        lastText = '';
+        sess = Ear.listen({
+          onState(x) { if (x === 'listening' && !ended) { st.textContent = label; box.classList.add('listening'); } },
+          onText(t) {
+            lastText = t;
+            const r = merge(Ear.match(texts, t));
+            if (eb) Ear.update(eb, r);
+            const last = r.lines[r.lines.length - 1];
+            if (auto && r.score >= pass && last.score >= 0.6 && !passT) passT = setTimeout(finish, 900);
+          },
+          onError(m) { st.textContent = m === 'mic' ? 'Le micro n\'est pas autorisé 😕' : 'Oups, je n\'arrive pas à écouter.'; box.classList.remove('listening'); }
+        });
+      }
+      const commit = () => { acc = merge(Ear.match(texts, lastText)); };
       async function finish() {
         if (ended) return; ended = true; clearTimeout(passT);
         st.textContent = 'Je vérifie…'; box.classList.remove('listening');
-        const r = await sess.stop();
+        let blob = null, err = null;
+        if (sess) { const r = await sess.stop(); sess = null; lastText = r.text; blob = r.blob; err = r.error; }
+        commit();
         if (!alive) return;
-        onEnd(Ear.match(texts, r.text), r.blob, r.error);
+        onEnd(acc, blob, err);
       }
-      const api = { finish, cancel() { ended = true; clearTimeout(passT); sess.cancel(); } };
+      const api = {
+        finish,
+        pause() { if (!sess || ended) return; commit(); sess.cancel(); sess = null; box.classList.remove('listening'); st.textContent = 'J\'écoute après toi…'; },
+        resume() { if (ended || sess || !alive) return; begin(); },
+        cancel() { ended = true; clearTimeout(passT); if (sess) sess.cancel(); sess = null; box.classList.remove('listening'); },
+        get box() { return eb; }
+      };
       cleanups.push(api.cancel);
+      if (paused) st.textContent = 'Écoute bien…'; else begin();
       return api;
     }
+    /* l'appli parle pendant que le micro est en pause (sinon l'IA s'entendrait elle-même) */
+    const sayEar = (ear, text, rate = .8) => { ear.pause(); return speakAsync(text, rate).then(() => alive && ear.resume()); };
     const cleanups = [];
     const verdict = res => res.score >= 0.999 ? 'Parfait, tous les mots y sont !' : res.score >= 0.8 ? 'Très bien, presque tout !' : res.score >= 0.5 ? 'Il manque encore des mots.' : 'Il manque beaucoup de mots.';
 
@@ -256,7 +289,36 @@
     }
 
     /* --- voix rigolotes --- */
-    if (act === 'voices') {
+    if (act === 'voices' && EAR) {
+      let k = 0, ear = null;
+      const voices = [['🐢 Voix lente', .6, false], ['🐇 Voix rapide', 1.35, false], ['🤖 Voix de robot', 1, true], ['🙂 Voix normale', .9, false]];
+      const speakVoice = async (i, j) => {
+        const [, r, robot] = voices[j];
+        ear.pause();
+        if (robot) { for (const wd of wordsOf(all[i].t)) { if (!alive) return; await speakAsync(wd, 1.1); await sleep(140); } }
+        else await speakAsync(all[i].t, r);
+        if (alive) ear.resume();
+      };
+      const render = () => {
+        if (ear) ear.cancel();
+        const i = idxs[k];
+        wrap.innerHTML = `<div class="prompt">Vers ${k + 1} / ${idxs.length} : écoute, puis répète-le à voix haute avec la même voix !</div>
+          <div class="ear-panel"></div>
+          <div class="row center voice-btns">${voices.map((v, j) => `<button class="pix-btn ${j === 2 ? 'purple' : 'gold'}" data-v="${j}">${v[0]}</button>`).join('')}</div>
+          <div class="row center"><button class="pix-btn" data-a="skip">Passer ➜</button></div>`;
+        ear = earPanel(wrap.querySelector('.ear-panel'), [i], { hideFn: () => null, pass: 0.8, paused: true, label: 'À toi ! Répète le vers…', onEnd() {
+          SFX.play('good'); UI.burstAt(wrap.querySelector('.ear-panel'), { n: 14, spread: 100 }); ok++;
+          bump(p, [i], 1);
+          setTimeout(() => { if (!alive) return; if (++k < idxs.length) render(); else done(Math.min(10, 2 + ok * 2), 10 + ok * 4, 'Quelle voix !', [`${ok} vers répété${ok > 1 ? 's' : ''}`]); }, 900);
+        } });
+        wrap.querySelectorAll('[data-v]').forEach(b => b.onclick = () => speakVoice(i, +b.dataset.v));
+        wrap.querySelector('[data-a=skip]').onclick = () => { if (++k < idxs.length) render(); else done(Math.min(10, 2 + ok * 2), 10 + ok * 4, 'Quelle voix !', [`${ok} vers répété${ok > 1 ? 's' : ''}`]); };
+        speakVoice(i, 3);
+      };
+      let ok = 0;
+      render();
+    }
+    if (act === 'voices' && !EAR) {
       let k = 0;
       const voices = [['🐢 Voix lente', .6, false], ['🐇 Voix rapide', 1.35, false], ['🤖 Voix de robot', 1, true], ['🙂 Voix normale', .9, false]];
       const render = () => {
@@ -342,19 +404,41 @@
         }
         return out + esc(l.t.slice(pos));
       };
+      const LVE = ['Lis la poésie à voix haute, je t\'écoute.', 'Les rimes ont disparu ! Lis-la en entier à voix haute.', 'Les mots importants s\'envolent aussi… Lis-la à voix haute !', 'Il ne reste que la première lettre ! Dis tous les mots.', 'Plus rien ! Récite-la de mémoire, je t\'écoute.'];
       const renderEar = () => {
-        wrap.innerHTML = `<div class="prompt">Niveau 5 / 5 · Plus rien ! Récite-la de mémoire, je t'écoute.</div><div class="erase-dots">${LV.map(() => `<i class="on"></i>`).join('')}</div>
-          <div class="ear-panel"></div><div class="row center"><button class="pix-btn green big" data-a="end">✔ J'ai fini</button></div>`;
-        const ear = earPanel(wrap.querySelector('.ear-panel'), idxs, { onEnd(res) {
+        const gapOf = w => level === 3 ? w[0] + '_'.repeat(Math.max(1, w.length - 1)) : '_'.repeat(Math.min(10, w.length));
+        const hideFn = (li, wi, w, nw) => hideWord(w, idxs[li], wi, nw) ? gapOf(w) : null;
+        wrap.innerHTML = `<div class="prompt">Niveau ${level + 1} / 5 · ${LVE[level]}</div><div class="erase-dots">${LV.map((_, j) => `<i class="${j <= level ? 'on' : ''}"></i>`).join('')}</div>
+          <div class="ear-panel"></div>
+          <div class="muted">${level ? 'Touche un trou pour voir le mot (essaie de ne pas le faire 😉) · ' : ''}Touche un vers pour l'entendre</div>
+          <div class="row center"><button class="pix-btn green big" data-a="end">✔ J'ai fini</button></div>`;
+        const panel = wrap.querySelector('.ear-panel');
+        const ear = earPanel(panel, idxs, { hideFn: level < 4 ? hideFn : null, pass: 0.85, onPeek: () => { peeks++; SFX.play('pop'); }, onEnd(res) {
+          if (level < 4) {
+            if (res.score >= 0.75) { SFX.play('good'); UI.burstAt(panel, { n: 16, spread: 120 }); level++; setTimeout(() => alive && render(), 900); return; }
+            SFX.play('bad');
+            panel.querySelector('.st').textContent = verdict(res) + ' Les mots en rouge n\'ont pas été dits :';
+            ear.box.innerHTML = Ear.revealHTML(res, { showAll: true });
+            const row = wrap.querySelector('.row:last-child');
+            row.innerHTML = `<button class="pix-btn gold big" data-a="again">🔁 Je réessaie</button>`;
+            row.querySelector('[data-a=again]').onclick = () => { SFX.play('pop'); render(); };
+            return;
+          }
           res.lines.forEach((l, k) => bump(p, [idxs[k]], l.score >= 0.85 ? (peeks <= 2 ? 2 : 1) : l.score >= 0.6 ? 1 : 0, true));
           const pc = Math.round(res.score * 100);
           if (res.score >= 0.8) SFX.play('good'); else SFX.play('bad');
           done(res.score >= 0.95 ? 10 : res.score >= 0.8 ? 7 : res.score >= 0.5 ? 4 : 2, 10 + Math.round(res.score * 25), verdict(res), [`${pc} % des mots récités`, `${peeks} coup${peeks > 1 ? 's' : ''} d'œil`]);
         } });
         wrap.querySelector('[data-a=end]').onclick = () => ear.finish();
+        panel.querySelectorAll('.ear-line').forEach(x => x.onclick = e => {
+          if (e.target.closest('.ew.hid')) return;
+          const t = [...x.querySelectorAll('.ew')].map(sp => sp.classList.contains('hid') ? '…' : sp.textContent).join(' ');
+          if (!t.replace(/[…\s]/g, '')) return;
+          x.classList.add('hl'); sayEar(ear, t).then(() => x.classList.remove('hl'));
+        });
       };
       const render = () => {
-        if (EAR && level === 4) return renderEar();
+        if (EAR) return renderEar();
         wrap.innerHTML = `<div class="prompt">Niveau ${level + 1} / 5 · ${LV[level]}</div><div class="erase-dots">${LV.map((_, j) => `<i class="${j <= level ? 'on' : ''}"></i>`).join('')}</div>
           ${poemBox((l, i) => eraseLine(l, i))}
           <div class="muted">Touche un trou pour voir le mot (essaie de ne pas le faire 😉)</div>
@@ -378,7 +462,56 @@
     }
 
     /* --- complète le vers (rime) --- */
-    if (act === 'complete' || act === 'next') {
+    if ((act === 'complete' || act === 'next') && EAR) {
+      const order = FR.shuffle(idxs.filter(i => act === 'complete' ? lastWord(all[i].t).length > 0 : all[i + 1] && idxs.includes(i + 1)));
+      if (!order.length) { wrap.innerHTML = '<p class="prompt">Choisis une strophe plus longue pour ce jeu.</p>'; return; }
+      let k = 0, good = 0, ear = null;
+      const render = () => {
+        if (ear) ear.cancel();
+        const i = order[k], l = all[i];
+        let errs = 0, answer, said, promptHTML, target;
+        if (act === 'complete') {
+          const lw = lastWord(l.t), cut = l.t.lastIndexOf(lw);
+          answer = lw; said = l.t.slice(0, cut); target = lw;
+          promptHTML = `<div class="big-line">${esc(l.t.slice(0, cut))}<span class="gap big"><i>?</i></span>${esc(l.t.slice(cut + lw.length))}</div><div class="prompt">Dis le mot qui manque !</div>`;
+        } else {
+          answer = all[i + 1].t; said = l.t; target = i + 1;
+          promptHTML = `<div class="big-line">${lineHTML(l.t, colors[i])}</div><div class="prompt">Et ensuite ? Dis le vers suivant !</div>`;
+        }
+        wrap.innerHTML = `<div class="game-progress">${order.map((_, j) => `<i class="${j < k ? 'done' : j === k ? 'cur' : ''}"></i>`).join('')}</div>${promptHTML}
+          <div class="ear-panel"></div>
+          <div class="choices ${act === 'next' ? 'lines' : ''}"></div>
+          <div class="row center"><button class="pix-btn gold" data-a="hear">${Pixel.svg('speaker')} Réécouter</button><button class="pix-btn" data-a="idk">🤔 Je ne sais pas</button></div>`;
+        const next = () => setTimeout(() => { if (!alive) return; if (++k < order.length) render(); else done(Math.max(2, good * 2), good * 8 + 10, good === order.length ? 'Sans faute !' : 'Bien joué !', [`${good} / ${order.length} trouvé${good > 1 ? 's' : ''} de mémoire`]); }, 1000);
+        const win = (node) => {
+          SFX.play('good'); UI.burstAt(node || wrap.querySelector('.ear-panel'), { n: 12, spread: 90 });
+          if (!errs) good++;
+          bump(p, [act === 'complete' ? i : i + 1], errs ? 0 : 1, act === 'next' && !errs);
+          if (act === 'complete') { const g = wrap.querySelector('.gap.big'); if (g) { g.classList.add('peek'); g.innerHTML = esc(answer); } }
+          next();
+        };
+        ear = earPanel(wrap.querySelector('.ear-panel'), [answer], { noBox: act === 'complete', paused: true, pass: act === 'complete' ? 0.99 : 0.75,
+          label: act === 'complete' ? 'Je t\'écoute… quel est le mot ?' : 'Je t\'écoute… dis le vers suivant !', onEnd: () => win() });
+        wrap.querySelector('[data-a=hear]').onclick = () => sayEar(ear, said);
+        wrap.querySelector('[data-a=idk]').onclick = () => {
+          errs++; ear.cancel(); SFX.play('pop');
+          wrap.querySelector('.ear-panel').innerHTML = '<div class="ear-status"><span class="st">Choisis la bonne réponse :</span></div>';
+          wrap.querySelector('[data-a=idk]').remove(); wrap.querySelector('[data-a=hear]').remove();
+          const pool = act === 'complete' ? [...new Set(all.map(x => lastWord(x.t)).filter(x => x && x.toLowerCase() !== answer.toLowerCase()))]
+            : all.filter((x, j) => j !== i + 1 && j !== i).map(x => x.t);
+          const opts = FR.shuffle([answer, ...FR.shuffle(pool).slice(0, 2)]);
+          const box = wrap.querySelector('.choices');
+          box.innerHTML = opts.map(o => `<button class="pix-btn wood choice">${esc(o)}</button>`).join('');
+          box.querySelectorAll('.choice').forEach((b, j) => b.onclick = () => {
+            if (opts[j] === answer) { box.querySelectorAll('.choice').forEach(x => x.disabled = true); win(b); }
+            else { SFX.play('bad'); b.disabled = true; UI.shake(b); }
+          });
+        };
+        sayEar(ear, said);
+      };
+      render();
+    }
+    if ((act === 'complete' || act === 'next') && !EAR) {
       const order = FR.shuffle(idxs.filter(i => act === 'complete' ? lastWord(all[i].t).length > 0 : all[i + 1] && idxs.includes(i + 1)));
       if (!order.length) { wrap.innerHTML = '<p class="prompt">Choisis une strophe plus longue pour ce jeu.</p>'; return; }
       let k = 0, good = 0;

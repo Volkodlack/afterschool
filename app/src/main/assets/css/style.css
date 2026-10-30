@@ -1131,7 +1131,8 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 @keyframes earPulse { 50% { transform: scale(1.25); filter: drop-shadow(0 0 8px rgba(230,60,60,.7)); } }
 .ear-box .ear-line { line-height: 1.7; }
 .ew { display: inline-block; transition: color .2s, transform .2s; }
-.ew.ok { color: var(--ink); animation: ewPop .35s ease-out; }
+.ew.ok { color: #2b8a3e; animation: ewPop .35s ease-out; }
+.ew.vis { color: var(--ink); }
 .ew.hid { color: rgba(43,29,18,.25); letter-spacing: 1px; }
 .ew.miss { color: #d63a2a; text-decoration: underline wavy rgba(214,58,42,.6); }
 @keyframes ewPop { from { transform: scale(1.35); color: #2f9e44; } }
