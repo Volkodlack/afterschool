@@ -174,13 +174,14 @@
   }
 
   /* ---------------- state ---------------- */
-  const RATES = { hunger: 4, joy: 3, clean: 2 }; // points lost per hour
+  const RATES = { hunger: 4, joy: 3, clean: 3.5 }; // points lost per hour (joy drops twice as fast when dirty)
   function pet() { return Store.data.pet; }
   function tick() {
     const p = pet(); if (!p) return;
     const now = Date.now();
     const h = Math.max(0, (now - (p.t || now)) / 3600000);
-    for (const k in RATES) p[k] = Math.max(0, Math.min(100, (p[k] == null ? 80 : p[k]) - RATES[k] * h));
+    const dirty = (p.clean == null ? 80 : p.clean) < 35;
+    for (const k in RATES) p[k] = Math.max(0, Math.min(100, (p[k] == null ? 80 : p[k]) - RATES[k] * h * (k === 'joy' && dirty ? 2 : 1)));
     p.t = now;
   }
   const level = p => 1 + Math.floor((p.xp || 0) / 40);
@@ -313,7 +314,7 @@
             f.remove(); SFX.play('gem');
             let n = 0; const chomp = setInterval(() => { setMood(n % 2 ? 'idle' : 'eat'); if (++n > 5) { clearInterval(chomp); setMood('happy', 1200); } }, 180);
             UI.burstAt(petEl, { n: 10, spread: 70, colors: ['#e8b77a', '#ffe58a', '#ff8fb1'] });
-            p.hunger = Math.min(100, p.hunger + food); p.joy = Math.min(100, p.joy + joy);
+            p.hunger = Math.min(100, p.hunger + food); p.joy = Math.min(100, p.joy + joy); p.clean = Math.max(0, p.clean - 6);
             const up = addXp(3); Store.save(true); refresh(); hearts(3);
             say(['Miam ! Délicieux !', 'Merci ! C\'était trop bon !', 'Hmmm, j\'adore !'][Math.floor(Math.random() * 3)]);
             levelCheck(up);
@@ -330,6 +331,7 @@
     w.querySelector('[data-a=play]').onclick = () => {
       if (scene.querySelector('.ball')) return;
       if (p.hunger < 10) { say('Je suis trop fatigué… J\'ai besoin de manger d\'abord.'); return; }
+      if (p.clean < 20) { say('Je suis trop sale pour jouer… Lave-moi d\'abord !'); return; }
       let hits = 0;
       const ball = el(`<button class="ball" aria-label="balle"></button>`);
       const move = () => { ball.style.left = (10 + Math.random() * 70) + '%'; ball.style.top = (8 + Math.random() * 45) + '%'; };
@@ -341,9 +343,9 @@
         hits++; SFX.play('pop'); petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump'); fx(hits + '/5');
         if (hits >= 5) {
           clearTimeout(timeout); ball.remove();
-          p.joy = Math.min(100, p.joy + 30); p.hunger = Math.max(0, p.hunger - 6);
+          p.joy = Math.min(100, p.joy + 30); p.hunger = Math.max(0, p.hunger - 6); p.clean = Math.max(0, p.clean - 15);
           const up = addXp(4); Store.save(true); refresh(); hearts(4); setMood('happy', 1500); SFX.play('good');
-          say('Trop drôle ! Encore !'); levelCheck(up);
+          say(p.clean < 35 ? 'Trop drôle ! Mais je suis plein de boue… un bain ?' : 'Trop drôle ! Encore !'); levelCheck(up);
         } else move();
       };
     };

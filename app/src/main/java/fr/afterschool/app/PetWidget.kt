@@ -35,7 +35,7 @@ object PetLogic {
     private const val PREFS = "pet_widget"
     private const val RATE_HUNGER = 4.0
     private const val RATE_JOY = 3.0
-    private const val RATE_CLEAN = 2.0
+    private const val RATE_CLEAN = 3.5
 
     data class Pet(
         val childId: String, val child: String, val name: String,
@@ -84,10 +84,11 @@ object PetLogic {
                 val o = arr.getJSONObject(i)
                 val h = maxOf(0.0, (now - o.optLong("t", now)) / 3600000.0)
                 fun dec(v: Double, r: Double) = (v - r * h).coerceIn(0.0, 100.0)
+                val dirty = o.optDouble("clean", 80.0) < 35
                 out.add(
                     Pet(
                         o.optString("childId"), o.optString("child"), o.optString("name"),
-                        dec(o.optDouble("hunger", 80.0), RATE_HUNGER), dec(o.optDouble("joy", 80.0), RATE_JOY), dec(o.optDouble("clean", 80.0), RATE_CLEAN),
+                        dec(o.optDouble("hunger", 80.0), RATE_HUNGER), dec(o.optDouble("joy", 80.0), if (dirty) RATE_JOY * 2 else RATE_JOY), dec(o.optDouble("clean", 80.0), RATE_CLEAN),
                         if (o.isNull("lastDay")) null else o.optString("lastDay"), o.optBoolean("current"), o.optString("theme", "pixel")
                     )
                 )
