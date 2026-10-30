@@ -3,8 +3,7 @@
   const { html, el } = UI;
   const esc = FR.esc;
 
-  const BOOSTER_COST = 125;
-  const BOOSTERS_PER_WEEK = 2;
+  const BOOSTER_BASE = 125;
   const CARDS_PER_BOOSTER = 5;
 
   /* ---------- elements ---------- */
@@ -85,20 +84,33 @@
     });
   });
   LEGENDS.forEach(([name, elk]) => CARDS.push({ name, el: elk, rar: 'or' }));
+  CARDS.forEach(c => { c.set = 1; });
+  const S2 = CardSets[Theme.id];
+  Object.keys(S2.NAMES).forEach(elk => {
+    S2.NAMES[elk].forEach((x, i) => {
+      const rar = i < 6 ? 'c' : i < 9 ? 'pc' : i < 11 ? 'r' : 'ur';
+      CARDS.push({ name: x.n, k: x.k, el: elk, rar, set: 2 });
+    });
+  });
+  S2.LEGENDS.forEach(([x, elk]) => CARDS.push({ name: x.n, k: x.k, el: elk, rar: 'or', set: 2 }));
+  const SETS = { 1: { name: Theme.id === 'poney' ? 'Poneys' : 'Créatures', EL, icon: k => Pixel.svg('el_' + k), label: Theme.t.pv, legendTxt: Theme.t.legendTxt },
+                 2: { name: S2.setName, EL: S2.EL, icon: S2.icon, label: S2.label, legendTxt: S2.legendTxt } };
   CARDS.forEach((c, i) => {
     c.id = i + 1;
     c.num = String(i + 1).padStart(3, '0');
+    const E = SETS[c.set].EL[c.el];
     const r = rng('card-' + c.name);
     c.pv = between(r, RAR[c.rar].pv);
-    c.atk = EL[c.el].atk[Math.floor(r() * EL[c.el].atk.length)];
+    c.atk = E.atk[Math.floor(r() * E.atk.length)];
     c.dmg = between(r, RAR[c.rar].dmg);
-    c.txt = c.rar === 'or' ? Theme.t.legendTxt : EL[c.el].txt[Math.floor(r() * EL[c.el].txt.length)];
+    c.txt = c.rar === 'or' ? SETS[c.set].legendTxt : E.txt[Math.floor(r() * E.txt.length)];
   });
 
   /* ---------- procedural pixel creature ---------- */
   const artCache = {};
   function art(card) {
     if (artCache[card.id]) return artCache[card.id];
+    if (card.set === 2) return (artCache[card.id] = S2.art(card, rng));
     if (Theme.id === 'poney') return (artCache[card.id] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Theme.ponyArt(card, rng)));
     const W = 20, H = 20, C = 10;
     const r = rng('art-' + card.name);
@@ -235,7 +247,9 @@
     if (d.cardsWeek.week !== weekKey()) { d.cardsWeek.week = weekKey(); d.cardsWeek.opened = 0; }
     return d.cardsT[Theme.id];
   }
-  const left = () => { state(); return Math.max(0, BOOSTERS_PER_WEEK - Store.data.cardsWeek.opened); };
+  const opened = () => { state(); return Store.data.cardsWeek.opened || 0; };
+  const cost = () => BOOSTER_BASE * Math.pow(2, Math.min(opened(), 10));
+  const canOpen = () => Store.data.stats.gems >= cost();
   const ownedCount = () => Object.keys(state().owned).length;
 
   function draw() {
@@ -258,15 +272,16 @@
 
   /* ---------- card markup ---------- */
   function cardHTML(c, opts = {}) {
-    const E = EL[c.el];
+    const SET = SETS[c.set];
+    const E = SET.EL[c.el];
     const R = RAR[c.rar];
     const n = opts.count > 1 ? `<span class="tc-count">×${opts.count}</span>` : '';
-    return `<div class="tcard r-${c.rar} el-${c.el}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
+    return `<div class="tcard r-${c.rar} el-${c.el} set${c.set}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
       <div class="tc-in">
-        <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">${Theme.t.pv}<b>${c.pv}</b></span><span class="tc-el">${Pixel.svg('el_' + c.el)}</span></div>
+        <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">${SET.label}<b>${c.pv}</b></span><span class="tc-el">${SET.icon(c.el)}</span></div>
         <div class="tc-art"><img src="${art(c)}" alt=""></div>
         <div class="tc-meta">N°${c.num} · ${E.name} · ${R.name} ${R.sym}</div>
-        <div class="tc-atk"><span class="tc-cost">${Pixel.svg('el_' + c.el)}${c.dmg >= 60 ? Pixel.svg('el_' + c.el) : ''}</span><b>${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
+        <div class="tc-atk"><span class="tc-cost">${SET.icon(c.el)}${c.dmg >= 60 ? SET.icon(c.el) : ''}</span><b>${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
         <div class="tc-txt">${esc(c.txt)}</div>
       </div>${n}${opts.isNew ? '<span class="tc-new">NOUVELLE !</span>' : ''}</div>`;
   }
@@ -276,47 +291,54 @@
   const backHTML = () => `<div class="tcard back"><div class="tc-in"><div class="tc-back-logo">${Pixel.svg('mascot')}<span>AFTER<br>SCHOOL</span></div></div></div>`;
 
   /* ---------- collection screen ---------- */
-  let filter = 'all';
+  let filter = 'all', curSet = 1;
   UI.register('cards', (root) => {
     UI.setTitle('Mes cartes');
     const st = state();
     const own = ownedCount();
     const gems = Store.data.stats.gems;
+    const price = cost();
+    const n = opened();
+    const SET = SETS[curSet];
+    const ownIn = k => CARDS.filter(c => c.set === k && st.owned[c.id]).length;
     const wrap = el(html`<div class="center-col">
       <div class="booster-bar panel">
         <div class="pack-mini">${packHTML()}</div>
         <div style="flex:1;min-width:220px">
           <div style="font-size:clamp(20px,3.4vmin,32px);font-weight:700">Ma collection : ${own} / ${CARDS.length}</div>
-          <div class="progress"><div style="width:${own}%"></div></div>
-          <div style="margin-top:10px;font-size:clamp(15px,2.4vmin,22px)">Boosters cette semaine : <b>${left()} / ${BOOSTERS_PER_WEEK}</b> ${left() ? '' : '— reviens lundi !'}</div>
+          <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
+          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix double à chaque fois. Il redescend lundi !` : 'Le prix double à chaque booster ouvert dans la semaine.'}</div>
         </div>
-        <button class="pix-btn gold big" data-a="open" ${left() && gems >= BOOSTER_COST ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${BOOSTER_COST} ${Theme.t.cur}</span></button>
+        <button class="pix-btn gold big" data-a="open" ${gems >= price ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price} ${Theme.t.cur}</span></button>
       </div>
-      ${left() && gems < BOOSTER_COST ? `<p class="prompt">Encore ${BOOSTER_COST - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
-      <div class="tabs" style="margin-top:var(--gap)">
+      ${gems < price ? `<p class="prompt">Encore ${price - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
+      <div class="tabs set-tabs" style="margin-top:var(--gap)">
+        ${[1, 2].map(k => `<button class="pix-btn ${curSet === k ? 'on' : ''}" data-set="${k}">${SETS[k].name} <small>${ownIn(k)}/100</small></button>`).join('')}
+      </div>
+      <div class="tabs">
         <button class="pix-btn small ${filter === 'all' ? 'on' : ''}" data-f="all">Toutes</button>
-        ${Object.entries(EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}"><span style="width:1.1em;display:inline-flex">${Pixel.svg('el_' + k)}</span>${e.name}</button>`).join('')}
+        ${Object.entries(SET.EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}"><span style="width:1.1em;display:inline-flex">${SET.icon(k)}</span>${e.name}</button>`).join('')}
         <button class="pix-btn small ${filter === 'or' ? 'on' : ''}" data-f="or">♛ Dorées</button>
       </div>
       <div class="album"></div></div>`);
     root.appendChild(wrap);
     const album = wrap.querySelector('.album');
-    const list = CARDS.filter(c => filter === 'all' || c.el === filter || (filter === 'or' && c.rar === 'or'));
+    const list = CARDS.filter(c => c.set === curSet && (filter === 'all' || c.el === filter || (filter === 'or' && c.rar === 'or')));
     album.innerHTML = list.map(c => st.owned[c.id] ? cardHTML(c, { count: st.owned[c.id] }) : missingHTML(c)).join('');
-    album.querySelectorAll('.tcard').forEach((n, i) => {
-      n.style.animationDelay = Math.min(i * 0.02, .8) + 's';
-      n.onclick = () => {
-        const c = CARDS[+n.dataset.id - 1];
+    album.querySelectorAll('.tcard').forEach((nd, i) => {
+      nd.style.animationDelay = Math.min(i * 0.02, .8) + 's';
+      nd.onclick = () => {
+        const c = CARDS[+nd.dataset.id - 1];
         if (!st.owned[c.id]) { UI.toast('Carte N°' + c.num + ' : pas encore trouvée !'); return; }
         zoom(c);
       };
     });
+    wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
     wrap.querySelector('[data-a=open]').onclick = async () => {
-      if (!left()) { UI.toast('Plus de booster cette semaine, reviens lundi !'); return; }
-      if (Store.data.stats.gems < BOOSTER_COST) { UI.toast(`Il te faut ${BOOSTER_COST} ${Theme.t.cur}`); return; }
-      if (!(await UI.confirm(`Ouvrir un booster pour ${BOOSTER_COST} ${Theme.t.cur} ?`, 'Oui !', 'Non'))) return;
-      UI.go('booster');
+      if (Store.data.stats.gems < cost()) { UI.toast(`Il te faut ${cost()} ${Theme.t.cur}`); return; }
+      if (!(await UI.confirm(`Ouvrir un booster pour ${cost()} ${Theme.t.cur} ?`, 'Oui !', 'Non'))) return;
+      UI.go('booster', {}, { replace: true });
     };
   });
 
@@ -344,9 +366,10 @@
   UI.register('booster', (root) => {
     UI.setTitle('Booster !');
     const st = state();
-    if (!left() || Store.data.stats.gems < BOOSTER_COST) { UI.back(); return; }
+    const price = cost();
+    if (Store.data.stats.gems < price) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
     // pay and draw immediately so leaving mid-animation never loses cards
-    Store.spendGems(BOOSTER_COST);
+    Store.spendGems(price);
     Store.data.cardsWeek.opened++; st.total = (st.total || 0) + 1;
     const pulled = draw();
     const isNew = pulled.map(c => !st.owned[c.id]);
@@ -387,46 +410,51 @@
       }
     };
 
+    // one card at a time: back face first, then a 2-step flip (scaleX) that never shows the front early
+    let busy = false;
     function showStack() {
       msg.textContent = 'Touche la carte pour la retourner !';
       zone.innerHTML = '';
       const remaining = pulled.length - idx;
-      for (let k = remaining - 1; k >= 0; k--) {
-        const f = el(`<div class="flip ${k === 0 ? 'top' : ''}" style="--k:${k}"><div class="flip-in"><div class="face back-face">${backHTML()}</div><div class="face front-face">${cardHTML(pulled[idx + k], { isNew: isNew[idx + k] })}</div></div></div>`);
-        zone.appendChild(f);
-      }
-      const top = zone.querySelector('.flip.top');
-      top.onclick = () => reveal(top);
+      const deck = el(`<div class="deck">${'<div class="deck-back"></div>'.repeat(Math.max(0, remaining - 1))}</div>`);
+      deck.querySelectorAll('.deck-back').forEach((d, k) => { d.innerHTML = backHTML(); d.style.setProperty('--k', k + 1); });
+      zone.appendChild(deck);
+      const card = el(`<div class="reveal-card deal">${backHTML()}</div>`);
+      zone.appendChild(card);
+      card.onclick = () => reveal(card);
+      busy = false;
     }
 
-    function reveal(f) {
-      if (f.classList.contains('flipped')) {
-        // send it to the row and show the next one
-        f.classList.add('away');
-        const c = pulled[idx];
+    function reveal(card) {
+      if (busy) return;
+      busy = true;
+      const c = pulled[idx];
+      if (card.classList.contains('shown')) {
+        card.classList.add('away');
         const mini = el(`<div class="mini-card">${cardHTML(c, { isNew: isNew[idx] })}</div>`);
         mini.onclick = () => zoom(c);
         row.appendChild(mini);
         idx++;
-        setTimeout(() => {
-          if (idx < pulled.length) showStack();
-          else finish();
-        }, 350);
+        setTimeout(() => { if (idx < pulled.length) showStack(); else finish(); }, 380);
         return;
       }
-      const c = pulled[idx];
-      f.classList.add('flipped');
-      const rank = RANK[c.rar];
+      card.classList.remove('deal');
+      card.classList.add('flip-out');
       setTimeout(() => {
+        card.innerHTML = cardHTML(c, { isNew: isNew[idx] });
+        card.classList.remove('flip-out');
+        card.classList.add('flip-in', 'shown', 'r-glow-' + c.rar);
+        const rank = RANK[c.rar];
         if (rank >= 4) {
           SFX.play('level'); UI.confetti(); stage.classList.add('golden-flash');
           setTimeout(() => stage.classList.remove('golden-flash'), 1600);
           msg.textContent = '♛ CARTE DORÉE !!! ♛';
-        } else if (rank >= 3) { SFX.play('record'); UI.burstAt(f, { n: 40, spread: 260, colors: ['#ff8fb1', '#7ec8f5', '#f5c542', '#8fdc5c', '#c48bf0'] }); msg.textContent = 'ULTRA RARE !'; }
-        else if (rank >= 2) { SFX.play('win'); UI.burstAt(f, { n: 24 }); msg.textContent = 'Une carte rare !'; }
+        } else if (rank >= 3) { SFX.play('record'); UI.burstAt(card, { n: 40, spread: 260, colors: ['#ff8fb1', '#7ec8f5', '#f5c542', '#8fdc5c', '#c48bf0'] }); msg.textContent = 'ULTRA RARE !'; }
+        else if (rank >= 2) { SFX.play('win'); UI.burstAt(card, { n: 24 }); msg.textContent = 'Une carte rare !'; }
         else { SFX.play(isNew[idx] ? 'good' : 'pop'); msg.textContent = isNew[idx] ? 'Nouvelle carte !' : 'Tu l\'avais déjà !'; }
-        if (isNew[idx] && rank < 2) UI.burstAt(f, { n: 10, spread: 100 });
-      }, 350);
+        if (isNew[idx] && rank < 2) UI.burstAt(card, { n: 10, spread: 100 });
+        setTimeout(() => { busy = false; msg.textContent += ' (touche pour continuer)'; }, 450);
+      }, 260);
     }
 
     function finish() {
@@ -435,9 +463,9 @@
       msg.textContent = nb ? `${nb} nouvelle${nb > 1 ? 's' : ''} carte${nb > 1 ? 's' : ''} dans ta collection !` : 'Que des doubles cette fois… la prochaine sera la bonne !';
       row.classList.add('done');
       stage.querySelector('[data-z=end]').style.display = '';
-      stage.querySelector('[data-a=album]').onclick = () => UI.back();
+      stage.querySelector('[data-a=album]').onclick = () => UI.go('cards', {}, { replace: true });
     }
   });
 
-  window.Cards = { CARDS, art, cardHTML, state, left, ownedCount, BOOSTER_COST };
+  window.Cards = { CARDS, art, cardHTML, state, cost, canOpen, opened, ownedCount };
 })();

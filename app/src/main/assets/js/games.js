@@ -431,8 +431,8 @@
   }
   function adventureRounds(words) {
     const ws = FR.shuffle(words);
-    const early = ['look', 'anagram', 'trous', 'ore'];
-    const late = ['trous', 'ore', 'dictee', 'anagram', 'dictee'];
+    const early = ['look', 'anagram', 'trous', 'ore', 'syllabes', 'feu'];
+    const late = ['trous', 'ore', 'dictee', 'anagram', 'dictee', 'efface', 'feu'];
     return ws.map((w, i) => {
       const pool = i < ws.length / 2 ? early : late;
       const mastered = Store.mastery(w) >= 2;
@@ -444,7 +444,7 @@
     const again = () => UI.go('session', p, { replace: true });
     let rounds;
     if (p.mode === 'adventure') rounds = adventureRounds(p.words);
-    else if (p.mode === 'revision') rounds = p.words.map(w => ({ game: FR.shuffle(['anagram', 'trous', 'ore', 'dictee', 'dictee', 'look'])[0], word: w }));
+    else if (p.mode === 'revision') rounds = p.words.map(w => ({ game: FR.shuffle(['anagram', 'trous', 'ore', 'dictee', 'dictee', 'look', 'feu', 'syllabes', 'efface'])[0], word: w }));
     else rounds = buildRounds(p.words, p.game);
     if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
     return runSession(root, { title: p.title, rounds, again });
@@ -487,6 +487,7 @@
     root.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
       const g = b.dataset.g;
       if (g === 'pluie') UI.go('rain', { title: 'Pluie de mots', words: l.words });
+      else if (g === 'memory' || g === 'motsmeles') UI.go(g, { title: GAMES[g].name, words: l.words });
       else UI.go('session', { title: GAMES[g].name, game: g, words: l.words });
     });
   });
@@ -535,11 +536,15 @@
           <button class="tile" data-n="${n2}" style="background-image:url(${Pixel.texture('or')})"><span class="ic">${Pixel.svg('trophy')}</span>Grande révision<span class="sub">${n2} mots</span></button>
           <button class="tile" data-r="1" style="background-image:url(${Pixel.texture('eau')})"><span class="ic">${Pixel.svg('rain')}</span>Pluie de mots<span class="sub">Tous les mots</span></button>
         </div>
-        <p class="prompt" style="margin-top:3vmin">${all.length} mots à réviser</p>
+        <div class="boxes">${[[0, 'À apprendre', 'Les mots encore difficiles'], [2, 'Presque su', 'Réussis 2 fois de suite'], [3, 'Je sais !', 'Réussis 3 fois de suite']].map(([m, t, d], i) => {
+          const n = all.filter(w => (m === 0 ? Store.mastery(w) <= 1 : Store.mastery(w) === m)).length;
+          return `<div class="box box${i + 1}"><div class="box-lid"></div><div class="box-n">${n}</div><b>${t}</b><small>${d}</small></div>`;
+        }).join('')}</div>
+        <p class="prompt" style="margin-top:2vmin">Les mots montent de boîte quand tu les réussis du premier coup !</p>
       </div>`));
     root.querySelectorAll('[data-n]').forEach(b => b.onclick = () => UI.go('session', { title: 'Révision', mode: 'revision', words: Store.revisionWords(+b.dataset.n) }));
     root.querySelector('[data-r]').onclick = () => UI.go('rain', { title: 'Pluie de mots', words: Store.revisionWords(10) });
   });
 
-  window.Games = { GAMES, ROUNDS };
+  window.Games = { GAMES, ROUNDS, typer, success, fail, same, TEX };
 })();

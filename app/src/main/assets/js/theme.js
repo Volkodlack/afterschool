@@ -262,7 +262,7 @@
     ],
     pony, ponySVG,
     ponyArt,
-    set(newId) { Store.data.settings.theme = newId; Store.save(true); location.reload(); },
+    set(newId) { Store.data.settings.theme = newId; Store.global.justPicked = Store.currentId(); Store.save(true); Store.saveGlobal(); location.reload(); },
     previewSVG(tid) { return tid === 'poney' ? ponySVG(MASCOT, true) : null; }
   };
   window.Theme = Theme;

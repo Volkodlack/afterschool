@@ -104,7 +104,7 @@
     const lv = Store.level();
     body.appendChild(el(html`<div><h2>Progrès</h2>
       <div class="row" style="font-size:clamp(16px,2.6vmin,24px);gap:24px;margin-bottom:12px">
-        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> ${Theme.t.cur}</span><span><b>${Cards.ownedCount()}</b>/100 cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
+        <span>Niveau <b>${lv.lvl}</b></span><span><b>${st.gems}</b> ${Theme.t.cur}</span><span><b>${Cards.ownedCount()}</b>/${Cards.CARDS.length} cartes</span><span><b>${st.totalCorrect}</b> mots réussis du premier coup</span>
       </div></div>`));
     const words = Object.entries(st.words).map(([w, s]) => ({ w, ...s })).filter(x => x.err > 0).sort((a, b) => (b.err / (b.ok + b.err)) - (a.err / (a.ok + a.err))).slice(0, 12);
     body.appendChild(el(html`<h3>Mots les plus difficiles</h3>`));
@@ -128,6 +128,7 @@
     const s = Store.data.settings;
     body.appendChild(el(html`<div><h2>Réglages</h2>
       <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
+      <div class="field"><label>Enfants</label><div data-z="kids"></div></div>
       <div class="field"><label>Thème de l'appli</label><div class="seg">${Theme.list.map(t => `<button class="pix-btn small ${Theme.id === t.id ? 'on' : ''}" data-theme="${t.id}">${t.name}</button>`).join('')}</div></div>
       <div class="field"><label>Code parent</label><div class="seg"><button class="pix-btn small wood" data-a="pin">${Pixel.svg('lock')} Changer le code</button></div></div>
       <div class="field"><label>Vitesse de la voix</label><div class="seg">
@@ -141,6 +142,22 @@
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p></div>`));
     body.querySelector('[data-a=profile]').onclick = () => UI.go('welcome', { edit: true });
+    const kz = body.querySelector('[data-z=kids]');
+    function drawKids() {
+      const kids = Store.profiles();
+      kz.innerHTML = kids.map(p => `<div class="list-row"><span class="av" style="width:44px;height:44px">${p.avatarImg ? `<img src="${p.avatarImg}" style="width:100%;height:100%;object-fit:contain">` : ''}</span>
+        <div class="grow"><div class="t">${esc(p.name || '?')}${p.id === Store.currentId() ? ' <span class="sheet-type t-texte">connecté</span>' : ''}</div>
+        <div class="s">${p.theme === 'poney' ? 'Centre équestre' : 'Monde des blocs'} · ses propres mots, fiches et cartes</div></div>
+        ${p.id === Store.currentId() ? '' : `<button class="pix-btn small" data-sw="${p.id}">Passer sur ce profil</button><button class="pix-btn small red" data-del="${p.id}">${Pixel.svg('trash')}</button>`}</div>`).join('') +
+        `<div class="row" style="margin-top:8px"><button class="pix-btn small green" data-a="addkid">${Pixel.svg('plus')} Ajouter un enfant</button></div>`;
+      kz.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => Store.switchProfile(b.dataset.sw));
+      kz.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+        const p = kids.find(x => x.id === b.dataset.del);
+        if (await UI.confirm(`Supprimer le profil de ${p.name} ? Ses mots, fiches, enregistrements et cartes seront effacés.`, 'Supprimer', 'Annuler')) { await Store.deleteProfile(p.id); drawKids(); UI.toast('Profil supprimé'); }
+      });
+      kz.querySelector('[data-a=addkid]').onclick = () => Store.createProfile();
+    }
+    drawKids();
     body.querySelector('[data-a=pin]').onclick = () => UI.createPin();
     body.querySelectorAll('[data-theme]').forEach(b => b.onclick = async () => {
       if (b.dataset.theme === Theme.id) return;

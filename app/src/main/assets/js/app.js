@@ -27,8 +27,34 @@
         if (c) return `<span class="av ${cls}"><img src="${Cards.art(c)}" alt=""></span>`;
       }
       return `<span class="av ${cls}">${Pixel.svg('mascot')}</span>`;
+    },
+    img(id) {
+      if (id && id.startsWith && id.startsWith('c:')) { const c = Cards.CARDS[+id.slice(2) - 1]; if (c) return Cards.art(c); }
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Pixel.svg('mascot'));
     }
   };
+
+  /* ---------- "Qui es-tu ?" child picker ---------- */
+  UI.register('profiles', (root) => {
+    UI.setTitle('');
+    const list = Store.profiles();
+    const w = el(html`<div class="game center-col">
+      <h2 class="pix-title" style="text-align:center;margin-top:2vmin">Qui fait ses devoirs ?</h2>
+      <div class="profile-grid">
+        ${list.map((p, i) => `<button class="profile-pick" data-p="${p.id}" style="animation-delay:${i * 0.07}s">
+            <span class="av">${p.avatarImg ? `<img src="${p.avatarImg}" alt="">` : Avatar.html(p.avatar)}</span>
+            <span class="pname">${esc(p.name || '?')}</span></button>`).join('')}
+        <button class="profile-pick add" data-add="1" style="animation-delay:${list.length * 0.07}s">
+          <span class="av">${Pixel.svg('plus')}</span><span class="pname">Ajouter un enfant</span></button>
+      </div></div>`);
+    root.appendChild(w);
+    w.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+      SFX.play('good');
+      if (b.dataset.p === Store.currentId()) UI.home(); else Store.switchProfile(b.dataset.p);
+    });
+    w.querySelector('[data-add]').onclick = async () => { if (await UI.parentGate()) Store.createProfile(); };
+  });
+
 
   UI.register('welcome', (root, { edit, themeOnly }) => {
     UI.setTitle(edit ? 'Mon profil' : 'Bienvenue !');
@@ -70,10 +96,12 @@
         w.querySelectorAll('.avatar-pick').forEach(x => x.classList.toggle('sel', x === b));
       });
       w.querySelector('[data-ok]').onclick = async () => {
-        st.name = name; st.avatar = avatar; Store.save(true);
+        st.name = name; st.avatar = avatar;
+        try { st.avatarImg = Avatar.img(avatar); } catch (e) {}
+        Store.save(true);
         UI.refreshHud();
         if (edit) { SFX.play('good'); UI.back(); return; }
-        stepParent();
+        if (Store.global.pin) finish(); else stepParent();
       };
     }
     function stepParent() {
@@ -84,12 +112,13 @@
         <button class="pix-btn gold big" data-ok>${Pixel.svg('lock')} Je suis le parent</button></div>`);
       root.appendChild(w);
       w.querySelector('[data-ok]').onclick = async () => {
-        if (Store.data.settings.pin || await UI.createPin()) {
-          st.onboarded = true; Store.save(true);
-          SFX.play('level'); UI.confetti();
-          UI.home();
-        }
+        if (Store.global.pin || await UI.createPin()) finish();
       };
+    }
+    function finish() {
+      st.onboarded = true; Store.save(true);
+      SFX.play('level'); UI.confetti();
+      UI.home();
     }
     function stepTheme() {
       root.innerHTML = '';
@@ -115,28 +144,27 @@
     const latest = Store.lists()[0];
     const fresh = latest && Date.now() - latest.createdAt < 3 * 86400000;
     const word = 'AFTER SCHOOL';
-    root.appendChild(el(html`<div class="center-col">
-      <div class="home-hero">
-        <div>
-          <div class="logo">${[...word].map((c, i) => c === ' ' ? '<br>' : `<span style="animation-delay:${i * 0.12}s">${c}</span>`).join('')}</div>
+    const page = el(html`<div class="home2">
+      <div class="home-pet"></div>
+      <div class="home-main">
+        <div class="logo small-logo">${[...word].map((c, i) => c === ' ' ? ' ' : `<span style="animation-delay:${i * 0.12}s">${c}</span>`).join('')}</div>
+        <div class="tiles home-tiles">
+          <button class="tile" data-go="words" style="background-image:url(${Pixel.texture('herbe')})">
+            ${fresh ? '<span class="badge">NOUVEAU</span>' : ''}
+            <span class="ic">${Pixel.svg('book')}</span>Mots de la semaine
+            <span class="sub">${latest ? latest.words.length + ' mots à apprendre' : 'Pas encore de liste'}</span></button>
+          <button class="tile" data-go="revision" style="background-image:url(${Pixel.texture('pierre')})">
+            <span class="ic">${Pixel.svg('pickaxe')}</span>Révision<span class="sub">Mots au hasard</span></button>
+          <button class="tile" data-go="reading" style="background-image:url(${Pixel.texture('bois')})">
+            <span class="ic">${Pixel.svg('clock')}</span>Lecture<span class="sub">Lis et bats ton record</span></button>
+          <button class="tile" data-go="cards" style="background-image:url(${Pixel.texture('violet')})">
+            ${Cards.canOpen() ? '<span class="badge">BOOSTER !</span>' : ''}
+            <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} cartes</span></button>
         </div>
-        ${UI.mascot()}
-        <div class="bubble">${esc(greeting())}</div>
       </div>
-      <div class="tiles">
-        <button class="tile" data-go="words" style="background-image:url(${Pixel.texture('herbe')})">
-          ${fresh ? '<span class="badge">NOUVEAU</span>' : ''}
-          <span class="ic">${Pixel.svg('book')}</span>Mots de la semaine
-          <span class="sub">${latest ? latest.words.length + ' mots à apprendre' : 'Pas encore de liste'}</span></button>
-        <button class="tile" data-go="revision" style="background-image:url(${Pixel.texture('pierre')})">
-          <span class="ic">${Pixel.svg('pickaxe')}</span>Révision<span class="sub">Mots au hasard</span></button>
-        <button class="tile" data-go="reading" style="background-image:url(${Pixel.texture('bois')})">
-          <span class="ic">${Pixel.svg('clock')}</span>Lecture<span class="sub">Lis et bats ton record</span></button>
-        <button class="tile" data-go="cards" style="background-image:url(${Pixel.texture('violet')})">
-          ${Cards.left() && Store.data.stats.gems >= Cards.BOOSTER_COST ? '<span class="badge">BOOSTER !</span>' : ''}
-          <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} · boosters avec tes ${Theme.t.cur}</span></button>
-      </div>
-    </div>`));
+    </div>`);
+    root.appendChild(page);
+    page.querySelector('.home-pet').appendChild(Pet.widget());
     root.querySelectorAll('.tile').forEach((t, i) => t.style.animationDelay = (0.1 + i * 0.1) + 's');
     root.querySelectorAll('[data-go]').forEach(t => t.onclick = () => {
       const g = t.dataset.go;
@@ -146,13 +174,20 @@
     const lockRow = el(`<div class="parent-lock-row center-col"><button class="pix-btn icon-btn wood parent-lock" aria-label="Espace parent">${Pixel.svg('lock')}</button></div>`);
     const lock = lockRow.querySelector('button');
     lock.onclick = async () => { if (await UI.parentGate()) UI.go('parent'); };
-    root.appendChild(lockRow);
-    const m = root.querySelector('.mascot');
-    m.addEventListener('click', () => { UI.mascotReact(root, 'jump'); SFX.play('pop'); UI.burstAt(m, { n: 10, spread: 90 }); root.querySelector('.bubble').textContent = greeting(); });
+    page.querySelector('.home-main').appendChild(lockRow);
   });
 
   SFX.enabled = Store.data.settings.sound !== false;
   if (Store.data.settings.voice) Speech.setVoice(Store.data.settings.voice);
-  if (Store.data.settings.onboarded && !Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
-  else if (Store.data.settings.onboarded) UI.go('home'); else UI.go('welcome', {});
+  if (Store.data.settings.onboarded && !Store.data.settings.avatarImg) { try { Store.data.settings.avatarImg = Avatar.img(Store.data.settings.avatar); Store.save(true); } catch (e) {} }
+  const G = Store.global;
+  const picked = G.justPicked === Store.currentId();
+  if (G.justPicked) { G.justPicked = null; Store.saveGlobal(); }
+  if (!Store.data.settings.onboarded) UI.go('welcome', {});
+  else if (!Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
+  else if (picked) UI.go('home');
+  else UI.go('profiles');
+  const me = document.getElementById('hud-me');
+  me.style.cursor = 'pointer';
+  me.onclick = () => { if (Store.data.settings.onboarded) { UI.closeAllModals(); UI.go('profiles'); } };
 })();

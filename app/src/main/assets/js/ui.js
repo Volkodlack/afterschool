@@ -51,6 +51,8 @@
       const lv = Store.level();
       $('#hud-level .lvl-num').textContent = 'Niveau ' + lv.lvl;
       $('#hud-level .xpfill').style.width = Math.round(lv.cur / lv.need * 100) + '%';
+      const sc = $('#hud-stars');
+      if (sc && window.Pet) sc.innerHTML = Pet.starIcon() + '<span>' + (Store.data.stats.stars || 0) + '</span>';
       const me = $('#hud-me');
       if (me && window.Avatar) me.innerHTML = Avatar.html(Store.data.settings.avatar) + (Store.data.settings.name ? '<span>' + FR.esc(Store.data.settings.name) + '</span>' : '');
       const s = Store.streak();
@@ -230,13 +232,13 @@
         if (!a) return false;
         const b = await UI.pinPad('Code parent', 'Tapez-le une deuxième fois');
         if (!b) return false;
-        if (a === b) { Store.data.settings.pin = a; Store.save(true); UI.toast('Code parent enregistré !'); return true; }
+        if (a === b) { Store.global.pin = a; Store.saveGlobal(); UI.toast('Code parent enregistré !'); return true; }
         UI.toast('Les deux codes sont différents, on recommence');
       }
     },
 
     async parentGate() {
-      const st = Store.data.settings;
+      const st = Store.global;
       if (!st.pin) return UI.createPin();
       for (let tries = 0; tries < 5; tries++) {
         const p = UI.pinPad('Espace parent', tries ? '<span style="color:var(--red)">Code incorrect, réessayez</span>' : 'Entrez le code parent');
@@ -283,6 +285,7 @@
           <div class="result-stars">${[0, 1, 2].map(i => Pixel.svg('star', i < stars ? 'on' : '')).join('')}</div>
           <div class="row center" style="font-size:clamp(20px,3.6vmin,34px);font-weight:700">
             <span class="row" style="gap:6px"><span style="width:1.4em;display:inline-block">${Pixel.svg('gem')}</span> +${gems}</span>
+            <span class="row" style="gap:6px"><span style="width:1.3em;display:inline-block">${window.Pet ? Pet.starIcon() : ''}</span> +${reward.stars}</span>
             <span style="width:30px"></span><span>+${xp} XP</span>
           </div>
           ${lines.map(l => `<p style="font-size:clamp(16px,2.6vmin,24px);margin:.6em 0">${l}</p>`).join('')}

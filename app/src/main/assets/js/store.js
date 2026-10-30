@@ -14,19 +14,58 @@
     settings: { name: '', sound: true, ttsRate: 0.85 }
   });
 
+  /* ---------- profiles (one data object per child) ---------- */
+  const GKEY = 'afterschool.global';
+  const PKEY = id => 'afterschool.p.' + id;
+  const read = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn(e); } };
+
+  let global = read(GKEY);
+  if (!global) {
+    global = { profiles: [], current: null, pin: null };
+    const old = read(KEY);
+    if (old && old.settings) {
+      // migrate the single-child data from earlier versions
+      const id = 'p' + uid();
+      global.pin = old.settings.pin || null;
+      delete old.settings.pin;
+      write(PKEY(id), old);
+      global.profiles.push({ id, name: old.settings.name || '', avatar: old.settings.avatar || 'mascot', theme: old.settings.theme || 'pixel', onboarded: !!old.settings.onboarded });
+      global.current = id;
+    }
+  }
+  if (!global.profiles.length) {
+    const id = 'p' + uid();
+    global.profiles.push({ id, name: '', avatar: 'mascot', theme: null });
+    global.current = id;
+  }
+  if (!global.profiles.find(p => p.id === global.current)) global.current = global.profiles[0].id;
+  write(GKEY, global);
+
   let data;
-  try { data = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}')); }
-  catch (e) { data = defaults(); }
+  data = Object.assign(defaults(), read(PKEY(global.current)) || {});
   data.stats = Object.assign(defaults().stats, data.stats || {});
   data.settings = Object.assign(defaults().settings, data.settings || {});
   data.world = Object.assign(defaults().world, data.world || {});
 
+  function syncSummary() {
+    const p = global.profiles.find(x => x.id === global.current);
+    if (!p) return;
+    p.name = data.settings.name || ''; p.avatar = data.settings.avatar || 'mascot'; p.theme = data.settings.theme || null;
+    if (data.settings.avatarImg) p.avatarImg = data.settings.avatarImg;
+    p.onboarded = !!data.settings.onboarded;
+  }
+
+  syncSummary();
+  write(GKEY, global);
+
   let saveTimer = null;
   function save(now) {
     clearTimeout(saveTimer);
-    const doit = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { console.warn(e); } };
+    const doit = () => { write(PKEY(global.current), data); syncSummary(); write(GKEY, global); };
     if (now) doit(); else saveTimer = setTimeout(doit, 150);
   }
+  function saveGlobal() { write(GKEY, global); }
 
   /* ---------- IndexedDB blobs ---------- */
   let dbp = null;
@@ -70,7 +109,25 @@
   const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 
   const Store = {
-    data, save, uid, Blobs,
+    data, save, uid, Blobs, global, saveGlobal,
+
+    /* ----- children ----- */
+    profiles() { return global.profiles.filter(p => p.onboarded); },
+    currentId() { return global.current; },
+    switchProfile(id) { save(true); global.current = id; global.justPicked = id; saveGlobal(); location.reload(); },
+    createProfile() {
+      save(true);
+      const id = 'p' + uid();
+      global.profiles.push({ id, name: '', avatar: 'mascot', theme: null });
+      global.current = id; global.justPicked = id; saveGlobal(); location.reload();
+    },
+    async deleteProfile(id) {
+      const d = read(PKEY(id));
+      if (d && d.sheets) for (const s of d.sheets) { await Blobs.del(s.imageId); for (const a of s.attempts || []) await Blobs.del(a.recId); }
+      try { localStorage.removeItem(PKEY(id)); } catch (e) {}
+      global.profiles = global.profiles.filter(p => p.id !== id);
+      saveGlobal();
+    },
 
     /* ----- word lists ----- */
     lists() { return data.lists.slice().sort((a, b) => b.createdAt - a.createdAt); },
@@ -134,11 +191,12 @@
     },
     addReward(gems, xp) {
       const before = this.level().lvl;
-      data.stats.gems += gems; data.stats.xp += xp;
+      const stars = Math.max(1, Math.round(gems / 2));
+      data.stats.gems += gems; data.stats.xp += xp; data.stats.stars = (data.stats.stars || 0) + stars;
       this.markDay();
       save();
       const after = this.level().lvl;
-      return { levelUp: after > before ? after : 0 };
+      return { levelUp: after > before ? after : 0, stars };
     },
     spendGems(n) { if (data.stats.gems < n) return false; data.stats.gems -= n; save(true); return true; },
     markDay() {
