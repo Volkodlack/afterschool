@@ -160,6 +160,8 @@
           <button class="tile" data-go="cards" style="background-image:url(${Pixel.texture('violet')})">
             ${Cards.canOpen() ? '<span class="badge">BOOSTER !</span>' : ''}
             <span class="ic">${Pixel.svg('pack')}</span>Mes cartes<span class="sub">${Cards.ownedCount()} / ${Cards.CARDS.length} cartes</span></button>
+          <button class="tile wide-tile" data-go="poems" style="background-image:url(${Pixel.texture('laine')})">
+            <span class="ic emo-ic">📜</span>Poésie<span class="sub">${(Store.data.poems || []).length ? (Store.data.poems || []).length + ' poésie(s) à apprendre' : 'Apprends-la par cœur'}</span></button>
         </div>
       </div>
     </div>`);

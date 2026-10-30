@@ -1052,3 +1052,57 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 @keyframes breathe { 50% { transform: scale(1.03, .96); } }
 .pet.need-dirty .pet-body { filter: sepia(.25) saturate(.8); }
 .pet.need-happy .pet-body { animation: petHappy 1.1s ease-in-out infinite; }
+
+/* ===== Poésie ===== */
+.home-tiles .wide-tile { grid-column: 1 / -1; min-height: clamp(80px, 13vmin, 130px); flex-direction: row; gap: 2vmin; }
+.home-tiles .wide-tile .ic { width: auto; height: auto; }
+.emo-ic { font-size: clamp(36px, 7vmin, 70px); line-height: 1; text-shadow: none; }
+.poem-head .poem-title { font-size: clamp(22px, 4vmin, 38px); font-weight: 700; }
+.poem-progress { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: clamp(18px, 3vmin, 28px); }
+.poem-progress .progress { flex: 1; margin: 0; height: 22px; }
+.strophe-stars { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: clamp(13px, 2vmin, 17px); }
+.sst { background: rgba(255,255,255,.7); border: 2px solid rgba(43,29,18,.3); padding: 2px 8px; } .sst i { color: #e0a81c; font-style: normal; letter-spacing: 1px; }
+.advice { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; background: #fff3b0; border: 3px dashed var(--gold-lo); padding: 8px 10px; }
+.scope-tabs { margin-top: var(--gap); }
+.poem-acts .emo { font-size: clamp(34px, 6.5vmin, 62px); line-height: 1; text-shadow: none; filter: drop-shadow(2px 3px 0 rgba(0,0,0,.25)); }
+.tips { margin-top: var(--gap); font-size: clamp(14px, 2.2vmin, 19px); } .tips ol { margin: 6px 0 0; padding-left: 1.3em; } .tips li { margin: 3px 0; }
+.poem-game { gap: clamp(10px, 2vmin, 20px); }
+.poem-text { background: var(--paper); border: 4px solid var(--ink); padding: clamp(12px, 2.4vmin, 28px); font-family: "Lecture"; font-size: clamp(20px, 3.6vmin, 36px); line-height: 1.55; width: min(100%, 900px); box-shadow: 0 6px 0 rgba(43,29,18,.35); }
+.poem-text.small { font-size: clamp(15px, 2.4vmin, 22px); }
+.poem-text .pl { padding: 0 .3em; transition: background .2s; cursor: pointer; }
+.poem-text .pl.new-s { margin-top: .7em; }
+.poem-text .pl.hl { background: #fff0a0; }
+.rhyme { text-decoration: underline; text-decoration-thickness: .12em; text-underline-offset: .15em; }
+.gap { display: inline-block; cursor: pointer; color: var(--ink-soft); background: rgba(126,200,245,.25); padding: 0 .1em; }
+.gap i { font-style: normal; letter-spacing: .05em; opacity: .55; }
+.gap.peek { background: #ffe0a0; color: var(--ink); }
+.gap.big { min-width: 3em; text-align: center; background: #fff3b0; }
+.erase-dots { display: flex; gap: 8px; } .erase-dots i { width: 18px; height: 18px; border: 3px solid var(--ink); background: #fff; } .erase-dots i.on { background: var(--gold); }
+.big-line { font-family: "Lecture"; font-weight: 700; font-size: clamp(24px, 5vmin, 50px); text-align: center; background: #fff; border: 4px solid var(--ink); padding: .4em .8em; max-width: 100%; box-shadow: 0 6px 0 rgba(43,29,18,.35); }
+.choices.lines { flex-direction: column; align-items: stretch; width: min(100%, 900px); }
+.choices.lines .choice { font-size: clamp(17px, 3vmin, 28px); text-align: left; justify-content: flex-start; }
+.voice-btns .pix-btn { min-width: 9em; }
+.snow-box { width: min(100%, 900px); font-family: "Lecture"; font-size: clamp(22px, 4vmin, 40px); line-height: 1.6; background: var(--paper); border: 4px solid var(--ink); padding: 14px 20px; transition: filter .3s; }
+.snow-box .pl.fresh { background: #fff3b0; animation: pop .4s steps(4); }
+.snow-box.hidden-lines .pl { filter: blur(12px); opacity: .5; }
+.order-done { width: min(100%, 900px); min-height: 2em; font-family: "Lecture"; font-size: clamp(20px, 3.4vmin, 34px); background: rgba(255,255,255,.7); border: 4px dashed rgba(43,29,18,.4); padding: 8px 14px; }
+.order-pool { display: flex; flex-direction: column; gap: 10px; width: min(100%, 900px); }
+.order-line { font-family: "Lecture"; font-size: clamp(17px, 3vmin, 28px); justify-content: flex-start; text-align: left; }
+.draw-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--gap); width: min(100%, 1100px); align-items: start; }
+.draw-cv { width: 100%; height: auto; background: #fff; border: 4px solid var(--ink); touch-action: none; display: block; }
+.draw-tools { margin-top: 8px; }
+.swatch { width: 38px; height: 38px; border: 3px solid var(--ink); cursor: pointer; padding: 0; }
+.swatch.sel { outline: 4px solid var(--gold); transform: translateY(-3px); }
+.recite-stage { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.draw-thumb { width: clamp(90px, 16vmin, 160px); aspect-ratio: 600 / 420; object-fit: cover; border: 3px solid var(--ink); background: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--ink-soft); }
+.draw-thumb.empty { background: rgba(255,255,255,.6); border-style: dashed; }
+.souffleur { min-height: 1.8em; font-family: "Lecture"; font-size: clamp(20px, 3.6vmin, 34px); color: var(--ink-soft); font-style: italic; }
+.recs { width: min(100%, 700px); } .recs h3 { margin: 6px 0; color: #fff; text-shadow: 2px 2px 0 var(--ink); }
+.recs .list-row { background: var(--paper); border: 3px solid var(--ink); padding: 8px 10px; margin-bottom: 6px; }
+.theme-poney .poem-text, .theme-poney .snow-box, .theme-poney .big-line, .theme-poney .order-done { border-radius: 22px; border-color: #ffc2dc; }
+.theme-poney .advice { border-radius: 16px; border-color: #ffc2dc; background: #fff8d6; }
+.theme-poney .sst { border-radius: 999px; }
+.theme-poney .draw-cv, .theme-poney .draw-thumb { border-radius: 16px; border-color: #ffc2dc; }
+.theme-poney .recs h3 { text-shadow: 0 2px 0 #e08ab0; }
+.theme-poney .recs .list-row { border-radius: 14px; border-color: #ffc2dc; }
+@media (max-width: 760px) { .draw-wrap { grid-template-columns: 1fr; } .voice-btns .pix-btn { min-width: 0; } }
