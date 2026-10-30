@@ -187,9 +187,22 @@
   const stage = p => { const l = level(p); return l < 3 ? 1 : l < 7 ? 2 : 3; };
   const stars = () => Store.data.stats.stars || 0;
   function addXp(n) { const p = pet(); const before = level(p); p.xp = (p.xp || 0) + n; Store.save(); return level(p) > before; }
-  function mood(p) { if (p.hunger < 25 || p.clean < 20 || p.joy < 20) return 'sad'; if (p.hunger > 70 && p.joy > 70 && p.clean > 60) return 'happy'; return 'idle'; }
+  let awakeUntil = 0;
+  const isNight = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h >= 20.75 || h < 7; };
+  const sleeping = () => isNight() && Date.now() > awakeUntil;
+  /* the single most important need, used for animations, widget and notifications */
+  function need(p) {
+    if (sleeping()) return 'sleep';
+    if (p.hunger < 30) return 'hungry';
+    if (p.clean < 35) return 'dirty';
+    if (p.joy < 30) return 'bored';
+    if (p.hunger > 70 && p.joy > 70 && p.clean > 60) return 'happy';
+    return 'idle';
+  }
+  function mood(p) { const n = need(p); return n === 'sleep' ? 'sleep' : (n === 'hungry' || n === 'dirty' || n === 'bored') ? 'sad' : n; }
   function message(p) {
     const n = Store.data.settings.name;
+    if (sleeping()) return `Chut… ${p.name} dort. Zzz…`;
     if (p.hunger < 30) return stars() < 2 ? `J'ai faim… Fais un exercice pour gagner des étoiles !` : `J'ai faim ! Tu me donnes à manger ?`;
     if (p.clean < 30) return 'Je suis tout sale… Un petit bain ?';
     if (p.joy < 30) return 'On joue ensemble ?';
@@ -216,6 +229,8 @@
       <div class="pet-scene">
         <div class="pet-bubble"></div>
         <div class="pet-floor"></div>
+        <div class="night-sky"><span class="moon"></span><i></i><i></i><i></i><i></i></div>
+        <div class="needs"></div>
         <div class="pet stage-${stage(p)} ${auraCls(p)}"><div class="pet-body">${petMarkup(p, mood(p))}</div></div>
         <div class="pet-fx"></div>
       </div>
@@ -240,10 +255,24 @@
       w.querySelector('.stars-chip b').textContent = stars();
       w.querySelector('.pet-lvl').textContent = 'Niv. ' + level(p);
       petEl.className = 'pet stage-' + stage(p) + ' ' + auraCls(p);
+      showNeeds();
       w.querySelectorAll('.dirt').forEach(d => d.remove());
       if (p.clean < 50) for (let i = 0; i < (p.clean < 25 ? 4 : 2); i++) { const d = el('<i class="dirt"></i>'); d.style.left = (30 + Math.random() * 40) + '%'; d.style.top = (40 + Math.random() * 35) + '%'; petEl.appendChild(d); }
       UI.refreshHud();
     };
+    function showNeeds() {
+      const n = need(p), box = w.querySelector('.needs');
+      scene.classList.toggle('night', n === 'sleep');
+      ['hungry', 'dirty', 'bored', 'sleep', 'happy'].forEach(k => petEl.classList.toggle('need-' + k, n === k || (k === 'dirty' && p.clean < 35 && n !== 'sleep')));
+      let h = '';
+      if (n === 'sleep') h = '<span class="zzz"><b>Z</b><b>z</b><b>z</b></span>';
+      else if (n === 'hungry') h = `<span class="thought"><span class="th-icon">${foodIcon(FOOD[Theme.id][0][0])}</span></span>`;
+      else if (n === 'bored') h = `<span class="thought"><span class="th-ball"></span></span><span class="tear"></span>`;
+      if (n !== 'sleep' && p.clean < 35) h += '<span class="stink"><i></i><i></i><i></i></span><span class="fly"></span><span class="fly f2"></span>';
+      if (n === 'happy') h += '<span class="sparkle-fx">✦</span><span class="sparkle-fx s2">✧</span>';
+      box.innerHTML = h;
+      Pet.sync();
+    }
     const fx = (txt, cls = '') => { const f = el(`<span class="pet-pop ${cls}">${txt}</span>`); f.style.left = (35 + Math.random() * 30) + '%'; w.querySelector('.pet-fx').appendChild(f); setTimeout(() => f.remove(), 1300); };
     const hearts = (n = 3) => { for (let i = 0; i < n; i++) setTimeout(() => fx(isPony() ? '♥' : '❤', 'heart'), i * 120); };
     const levelCheck = (up) => { if (up) { SFX.play('level'); UI.confetti(); say(`Youpi ! Je passe au niveau ${level(p)} !`, 4000); } };
@@ -252,9 +281,14 @@
     // blink for pixel pets
     const blink = setInterval(() => { if (!petEl.isConnected) return clearInterval(blink); if (!isPony() && (!petEl.dataset.mood || petEl.dataset.mood === 'idle')) { setMood('blink'); setTimeout(() => petEl.isConnected && setMood(mood(p)), 160); } }, 3800);
 
+    const life = setInterval(() => { if (!petEl.isConnected) return clearInterval(life); tick(); Store.save(); refresh(); setMood(mood(p)); }, 60000);
     let lastPet = 0;
     petEl.onclick = () => {
       if (Date.now() - lastPet < 900) return; lastPet = Date.now();
+      if (sleeping()) {
+        awakeUntil = Date.now() + 3 * 60000; SFX.play('pop'); setMood(mood(p)); refresh();
+        say(`*Bâille*… Coucou ${Store.data.settings.name || ''} ! Il est tard, on fait vite ?`); return;
+      }
       p.joy = Math.min(100, p.joy + 3); Store.save();
       SFX.play('pop'); hearts(2); setMood('happy', 900); petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump');
       refresh();
@@ -439,5 +473,80 @@
     return () => root.classList.remove('typing', 'full');
   });
 
-  window.Pet = { widget, starIcon, tick };
+  /* ---------------- home-screen widget + notifications (native side) ---------------- */
+  let syncT = 0;
+  function sync() {
+    clearTimeout(syncT);
+    syncT = setTimeout(doSync, 600);
+  }
+  function doSync() {
+    const N = window.AfterSchoolNative;
+    if (!N || !N.syncPets) return;
+    try {
+      const list = [];
+      Store.global.profiles.filter(pr => pr.onboarded).forEach(pr => {
+        const d = pr.id === Store.currentId() ? Store.data : Store.profileData(pr.id);
+        if (!d || !d.pet) return;
+        const q = d.pet;
+        list.push({ childId: pr.id, child: (d.settings && d.settings.name) || pr.name || '', name: q.name, hunger: q.hunger, joy: q.joy, clean: q.clean, t: q.t || Date.now(),
+          lastDay: d.stats && d.stats.lastDay, current: pr.id === Store.currentId(), theme: (d.settings && d.settings.theme) || 'pixel' });
+      });
+      N.syncPets(JSON.stringify(list));
+      if (pet()) frames();
+    } catch (e) { console.warn(e); }
+  }
+  const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  const svgUrl = (svg, size) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', `<svg width="${size}" height="${size}" `));
+  async function frames() {
+    const N = window.AfterSchoolNative;
+    const p = pet();
+    if (!N || !N.setPetFrames || !p) return;
+    const key = [Theme.id, p.species, JSON.stringify(p.wear || {}), stage(p), 4].join('|');
+    try { if (localStorage.getItem('afterschool.frames.' + Store.currentId()) === key) return; } catch (e) {}
+    const S = 192;
+    const face = { idle: ['idle', 'blink'], happy: ['happy', 'idle'], hungry: ['sad', 'eat'], dirty: ['sad', 'sad'], bored: ['sad', 'blink'], sleep: ['sleep', 'sleep'] };
+    const accs = wornIds(p);
+    const petSrc = async m => isPony() ? loadImg(svgUrl(ponyPet(p.species, accs), 300)) : loadImg(pixelPet(p.species, m, accs));
+    const food = await loadImg(svgUrl(foodIcon(FOOD[Theme.id][0][0]).replace(/class="[^"]*"/, ''), 64)).catch(() => null);
+    const out = {};
+    for (const k of Object.keys(face)) {
+      out[k] = [];
+      for (let f = 0; f < 2; f++) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = S;
+        const c = cv.getContext('2d');
+        c.imageSmoothingEnabled = isPony();
+        const img = await petSrc(face[k][f]);
+        let dy = 0, rot = 0, sx = 1, sy = 1;
+        if (k === 'happy' && f === 1) dy = -12;
+        if (k === 'idle' && f === 1) { sx = 1.03; sy = .97; }
+        if (k === 'hungry' && f === 1) rot = -.04;
+        if (k === 'bored') rot = f ? .03 : -.03;
+        if (k === 'sleep') { sx = f ? 1.02 : 1; sy = f ? .98 : 1; }
+        const size = 150;
+        c.save();
+        c.translate(S / 2, S - 14 + dy); c.rotate(rot); c.scale(sx, sy);
+        c.drawImage(img, -size / 2, -size, size, size);
+        c.restore();
+        c.font = 'bold 30px Pixel, Kawaii, sans-serif'; c.textAlign = 'center';
+        if (k === 'sleep') { c.fillStyle = '#6a5cb8'; c.strokeStyle = '#fff'; c.lineWidth = 4; const z = f ? [[150, 36, 30], [170, 18, 22]] : [[140, 48, 24], [160, 28, 30]]; z.forEach(([x, y, s]) => { c.font = `bold ${s}px sans-serif`; c.strokeText('Z', x, y); c.fillText('Z', x, y); }); }
+        if (k === 'hungry' || k === 'bored') {
+          c.fillStyle = '#fff'; c.strokeStyle = '#2b1d12'; c.lineWidth = 3;
+          [[150, 48, 28], [118, 82, 7], [108, 94, 4]].forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y - (f ? 4 : 0), r, 0, 7); c.fill(); c.stroke(); });
+          if (k === 'hungry' && food) c.drawImage(food, 128, 26 - (f ? 4 : 0), 44, 44);
+          if (k === 'bored') { c.fillStyle = '#ff8fb1'; c.beginPath(); c.arc(150, 44 - (f ? 4 : 0), 14, 0, 7); c.fill(); c.fillStyle = '#7ec8f5'; c.beginPath(); c.ellipse(70, 110 + f * 8, 5, 8, 0, 0, 7); c.fill(); }
+        }
+        if (k === 'dirty') {
+          c.strokeStyle = '#7bbf4a'; c.lineWidth = 4;
+          for (let i = 0; i < 3; i++) { c.beginPath(); const x = 60 + i * 36; for (let y = 0; y < 34; y++) c.lineTo(x + Math.sin((y + f * 8) / 5) * 6, 70 - y - f * 6); c.stroke(); }
+          c.fillStyle = 'rgba(107,74,42,.75)'; [[80, 140], [116, 128], [100, 156]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); });
+        }
+        if (k === 'happy' && f === 1) { c.fillStyle = '#ff5c8a'; c.font = 'bold 26px sans-serif'; c.fillText('♥', 40, 50); c.fillText('♥', 160, 40); }
+        out[k].push(cv.toDataURL('image/png').split(',')[1]);
+      }
+    }
+    N.setPetFrames(JSON.stringify(out));
+    try { localStorage.setItem('afterschool.frames.' + Store.currentId(), key); } catch (e) {}
+  }
+
+  window.Pet = { widget, starIcon, tick, sync, need };
 })();

@@ -324,7 +324,7 @@
   $('#btn-back').innerHTML = Pixel.svg('back');
   $('#btn-back').onclick = () => UI.back();
   window.AS_back = () => UI.back();
-  window.AS_pause = () => { if (UI.onPause) UI.onPause(); };
+  window.AS_pause = () => { if (UI.onPause) UI.onPause(); if (window.Pet) Pet.sync(); };
 
 
   window.UI = UI;

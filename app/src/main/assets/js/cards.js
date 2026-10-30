@@ -248,7 +248,7 @@
     return d.cardsT[Theme.id];
   }
   const opened = () => { state(); return Store.data.cardsWeek.opened || 0; };
-  const cost = () => BOOSTER_BASE * Math.pow(2, Math.min(opened(), 10));
+  const cost = () => Math.round(BOOSTER_BASE * Math.pow(1.25, Math.min(opened(), 30)) / 5) * 5;
   const canOpen = () => Store.data.stats.gems >= cost();
   const ownedCount = () => Object.keys(state().owned).length;
 
@@ -307,7 +307,7 @@
         <div style="flex:1;min-width:220px">
           <div style="font-size:clamp(20px,3.4vmin,32px);font-weight:700">Ma collection : ${own} / ${CARDS.length}</div>
           <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
-          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix double à chaque fois. Il redescend lundi !` : 'Le prix double à chaque booster ouvert dans la semaine.'}</div>
+          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix augmente un peu à chaque fois. Il redescend lundi !` : 'Le prix augmente un peu à chaque booster ouvert dans la semaine.'}</div>
         </div>
         <button class="pix-btn gold big" data-a="open" ${gems >= price ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price} ${Theme.t.cur}</span></button>
       </div>

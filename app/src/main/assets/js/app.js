@@ -187,6 +187,12 @@
   else if (!Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
   else if (picked) UI.go('home');
   else UI.go('profiles');
+  // widget & notifications: first sync, and ask once for the notification permission
+  setTimeout(() => {
+    if (window.Pet) Pet.sync();
+    const N = window.AfterSchoolNative;
+    if (N && N.requestNotifications && Store.data.pet && !G.notifAsked) { G.notifAsked = true; Store.saveGlobal(); N.requestNotifications(); }
+  }, 1500);
   const me = document.getElementById('hud-me');
   me.style.cursor = 'pointer';
   me.onclick = () => { if (Store.data.settings.onboarded) { UI.closeAllModals(); UI.go('profiles'); } };

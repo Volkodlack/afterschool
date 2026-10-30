@@ -137,6 +137,9 @@
       <div class="field"><label>Voix de lecture <span class="muted" style="font-weight:400">(choisissez celle qui sonne le plus naturel)</span></label><div data-z="voices"></div></div>
       <div class="field"><label>Police d'écriture</label><div class="seg">
         <button class="pix-btn small ${!s.dys ? 'on' : ''}" data-dys="0">Normale</button><button class="pix-btn small ${s.dys ? 'on' : ''}" data-dys="1" style="font-family:Dys,sans-serif">Adaptée dyslexie</button></div></div>
+      <div class="field"><label>Notifications du compagnon</label><div class="seg">
+        <button class="pix-btn small ${Store.global.notif !== false ? 'on' : ''}" data-n="1">Activées</button><button class="pix-btn small ${Store.global.notif === false ? 'on' : ''}" data-n="0">Coupées</button></div>
+        <p class="muted" style="margin:6px 0 0;font-weight:400;font-size:clamp(13px,1.9vmin,17px)">Le compagnon prévient quand il a faim, est sale ou s'ennuie (entre 8 h et 20 h, au plus une fois toutes les 3 heures), et rappelle les devoirs en fin de journée. Pour le widget : appui long sur l'écran d'accueil de la tablette › Widgets › After School.</p></div>
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
@@ -191,6 +194,13 @@
       s.dys = b.dataset.dys === '1'; Store.save(true);
       document.body.classList.toggle('dys', s.dys);
       body.querySelectorAll('[data-dys]').forEach(x => x.classList.toggle('on', x === b));
+    });
+    body.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
+      const on = b.dataset.n === '1'; Store.global.notif = on; Store.saveGlobal();
+      const N = window.AfterSchoolNative;
+      if (N && N.setNotifications) N.setNotifications(on);
+      if (on && N && N.requestNotifications) N.requestNotifications();
+      body.querySelectorAll('[data-n]').forEach(x => x.classList.toggle('on', x === b));
     });
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
     body.querySelector('[data-a=reset]').onclick = async () => {

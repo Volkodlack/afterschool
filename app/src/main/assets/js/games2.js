@@ -185,7 +185,7 @@
           if (c1.i === c2.i && c1.kind !== c2.kind) {
             setTimeout(() => {
               b1.classList.add('done'); b2.classList.add('done'); SFX.play('good'); UI.burstAt(b2, { n: 12, spread: 90 });
-              Store.recordWord(c1.w, !errs[c1.i]); found++; open = []; lock = false;
+              Store.recordWord(c1.w, !errs[c1.i], 'memory'); found++; open = []; lock = false;
               if (found === ws.length) finish();
             }, 500);
           } else {
@@ -261,7 +261,7 @@
         hit.found = true; SFX.play('good'); say(hit.w);
         hit.cells.forEach(i => cellsEl[i].classList.add('found', 'f' + (placed.indexOf(hit) % 6)));
         const chip = wrap.querySelector(`[data-w="${placed.indexOf(hit)}"]`); chip.classList.add('done'); UI.burstAt(chip, { n: 10, spread: 80 });
-        Store.recordWord(hit.w, true);
+        Store.recordWord(hit.w, true, 'motsmeles');
         if (placed.every(p => p.found)) finish();
       } else if (sel.length > 1) { misses++; SFX.play('bad'); UI.shake(gridEl); }
       start = null; sel = []; paint();

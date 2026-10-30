@@ -113,6 +113,7 @@
 
     /* ----- children ----- */
     profiles() { return global.profiles.filter(p => p.onboarded); },
+    profileData(id) { return read(PKEY(id)); },
     currentId() { return global.current; },
     switchProfile(id) { save(true); global.current = id; global.justPicked = id; saveGlobal(); location.reload(); },
     createProfile() {
@@ -146,24 +147,46 @@
 
     /* ----- word stats ----- */
     wordStat(w) { return data.stats.words[w.toLowerCase()] || { ok: 0, err: 0, seen: 0, last: 0, hist: [] }; },
-    recordWord(w, firstTry) {
+    /* word path: 0 Découverte → 1 Apprentissage → 2 Confirmation → 3 Maîtrisé */
+    STAGES: [{ name: 'Découverte', icon: '🌱' }, { name: 'Apprentissage', icon: '📘' }, { name: 'Confirmation', icon: '🎯' }, { name: 'Maîtrisé', icon: '⭐' }],
+    RECALL: ['dictee', 'feu', 'look', 'efface'],
+    stageOf(s) {
+      if (!s) return 0;
+      if (s.stage == null) {
+        const h = s.hist || [];
+        s.stage = h.length >= 3 && h.slice(-3).every(x => x) ? 2 : (s.ok > 0 || s.seen > 0) ? 1 : 0;
+      }
+      return s.stage;
+    },
+    recordWord(w, firstTry, game) {
       const k = w.toLowerCase();
       const s = data.stats.words[k] || { ok: 0, err: 0, seen: 0, last: 0, hist: [] };
+      const before = this.stageOf(data.stats.words[k] ? s : null);
       s.seen++; s.last = Date.now();
       if (firstTry) s.ok++; else s.err++;
       s.hist = (s.hist || []).concat(firstTry ? 1 : 0).slice(-5);
-      data.stats.words[k] = s;
       if (firstTry) data.stats.totalCorrect++;
+      const recall = this.RECALL.includes(game);
+      let st = before;
+      if (st === 0) { st = 1; s.learn = firstTry ? 1 : 0; }
+      else if (st === 1) {
+        if (firstTry) { s.learn = (s.learn || 0) + 1; if (s.learn >= 2) { st = 2; s.conf = 0; s.confAt = 0; } }
+        else s.learn = 0;
+      } else if (st === 2) {
+        if (recall) {
+          if (firstTry) {
+            // confirmation needs two successes in two separate sessions (2 h apart)
+            if (Date.now() - (s.confAt || 0) > 2 * 3600000) { s.conf = (s.conf || 0) + 1; s.confAt = Date.now(); }
+            if (s.conf >= 2) st = 3;
+          } else { st = 1; s.learn = 0; }
+        }
+      } else if (st === 3 && recall && !firstTry) { st = 2; s.conf = 0; s.confAt = 0; }
+      s.stage = st;
+      data.stats.words[k] = s;
       save();
+      return { from: before, to: st };
     },
-    mastery(w) {
-      const s = this.wordStat(w);
-      const h = s.hist || [];
-      if (h.length >= 3 && h.slice(-3).every(x => x)) return 3;
-      if (h.length >= 2 && h.slice(-2).every(x => x)) return 2;
-      if (s.ok > 0) return 1;
-      return 0;
-    },
+    mastery(w) { return this.stageOf(data.stats.words[w.toLowerCase()]); },
     listMastery(l) {
       if (!l.words.length) return 0;
       return l.words.reduce((a, w) => a + this.mastery(w), 0) / (l.words.length * 3);
@@ -192,6 +215,7 @@
     addReward(gems, xp) {
       const before = this.level().lvl;
       const stars = Math.max(1, Math.round(gems / 2));
+      setTimeout(() => window.Pet && Pet.sync(), 50);
       data.stats.gems += gems; data.stats.xp += xp; data.stats.stars = (data.stats.stars || 0) + stars;
       this.markDay();
       save();

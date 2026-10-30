@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="@drawable/widget_bg_pixel">
+
+    <ViewFlipper
+        android:id="@+id/widget_flip"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:autoStart="true"
+        android:flipInterval="650">
+        <ImageView
+            android:id="@+id/widget_f1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="Compagnon" />
+        <ImageView
+            android:id="@+id/widget_f2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="Compagnon" />
+    </ViewFlipper>
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textStyle="bold"
+        android:textSize="15sp"
+        android:textColor="#2b1d12"
+        android:maxLines="1"
+        android:text="After School" />
+
+    <TextView
+        android:id="@+id/widget_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="12sp"
+        android:textColor="#2b1d12"
+        android:maxLines="2"
+        android:text="" />
+
+    <LinearLayout
+        android:id="@+id/widget_bars"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" android:text="🍎" />
+        <ProgressBar
+            android:id="@+id/widget_hunger"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1"
+            android:layout_marginStart="2dp" android:layout_marginEnd="6dp"
+            android:max="100" android:progress="50"
+            android:progressTint="#ffb36b" android:progressBackgroundTint="#ffffff" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" android:text="💗" />
+        <ProgressBar
+            android:id="@+id/widget_joy"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1"
+            android:layout_marginStart="2dp" android:layout_marginEnd="6dp"
+            android:max="100" android:progress="50"
+            android:progressTint="#ff8fb1" android:progressBackgroundTint="#ffffff" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" android:text="🫧" />
+        <ProgressBar
+            android:id="@+id/widget_clean"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1"
+            android:layout_marginStart="2dp"
+            android:max="100" android:progress="50"
+            android:progressTint="#7ec8f5" android:progressBackgroundTint="#ffffff" />
+    </LinearLayout>
+</LinearLayout>

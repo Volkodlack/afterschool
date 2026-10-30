@@ -324,6 +324,7 @@
     const rounds = cfg.rounds;
     rounds.forEach(() => prog.appendChild(el('<i></i>')));
     let idx = 0, firstTry = 0, alive = true;
+    const promos = [];
     const results = [];
     function next() {
       if (!alive) return;
@@ -336,7 +337,8 @@
       ROUNDS[r.game](area, r.word, (errors) => {
         if (!alive || finished) return;
         finished = true;
-        Store.recordWord(r.word, errors === 0);
+        const ch = Store.recordWord(r.word, errors === 0, r.game);
+        if (ch.to > ch.from) promos.push({ word: r.word, to: ch.to });
         if (errors === 0) firstTry++;
         results.push({ word: r.word, errors });
         idx++; next();
@@ -352,7 +354,8 @@
         title: stars === 3 ? 'Incroyable !' : stars === 2 ? 'Bien joué !' : 'Continue comme ça !',
         stars, gems, xp,
         lines: [`${firstTry} mot${firstTry > 1 ? 's' : ''} sur ${rounds.length} réussi${firstTry > 1 ? 's' : ''} du premier coup`]
-          .concat(hard.length ? ['À revoir : ' + hard.join(', ')] : []),
+          .concat(hard.length ? ['À revoir : ' + hard.join(', ')] : [])
+          .concat(promos.length ? [promos.map(pr => `<span class="promo">${Store.STAGES[pr.to].icon} <b style="font-family:Lecture">${esc(pr.word)}</b> passe en <b>${Store.STAGES[pr.to].name}</b> !</span>`).join('<br>')] : []),
         onAgain: cfg.again,
         onDone: () => UI.back()
       });
@@ -406,7 +409,7 @@
         o.dead = true;
         if (o.good) {
           d.classList.add('hit'); SFX.play('gem'); caught++; got++; drawScore(); UI.burstAt(d, { n: 12, spread: 120 });
-          if (got >= need) { Store.recordWord(target, !perWordErr[target]); wi++; if (wi >= queue.length) return end(true); speed += 12; setTarget(); }
+          if (got >= need) { Store.recordWord(target, !perWordErr[target], 'pluie'); wi++; if (wi >= queue.length) return end(true); speed += 12; setTarget(); }
         } else {
           d.classList.add('miss'); SFX.play('bad'); Haptic(120); lives--; missesWrong++; perWordErr[target] = 1; drawHearts();
           if (lives <= 0) return end(false);
@@ -453,22 +456,17 @@
   function buildRounds(words, game) {
     return FR.shuffle(words).map(w => ({ game, word: w }));
   }
+  /* each word gets a game that fits its step on the path */
+  const BY_STAGE = [['look', 'feu', 'syllabes'], ['anagram', 'trous', 'ore', 'syllabes', 'efface'], ['dictee', 'feu', 'efface', 'dictee'], ['dictee', 'feu']];
   function adventureRounds(words) {
-    const ws = FR.shuffle(words);
-    const early = ['look', 'anagram', 'trous', 'ore', 'syllabes', 'feu'];
-    const late = ['trous', 'ore', 'dictee', 'anagram', 'dictee', 'efface', 'feu'];
-    return ws.map((w, i) => {
-      const pool = i < ws.length / 2 ? early : late;
-      const mastered = Store.mastery(w) >= 2;
-      return { game: mastered ? FR.shuffle(['dictee', 'ore', 'trous'])[0] : pool[Math.floor(Math.random() * pool.length)], word: w };
-    });
+    return FR.shuffle(words).map(w => { const pool = BY_STAGE[Store.mastery(w)]; return { game: pool[Math.floor(Math.random() * pool.length)], word: w }; });
   }
 
   UI.register('session', (root, p) => {
     const again = () => UI.go('session', p, { replace: true });
     let rounds;
     if (p.mode === 'adventure') rounds = adventureRounds(p.words);
-    else if (p.mode === 'revision') rounds = p.words.map(w => ({ game: FR.shuffle(['anagram', 'trous', 'ore', 'dictee', 'dictee', 'look', 'feu', 'syllabes', 'efface'])[0], word: w }));
+    else if (p.mode === 'revision') rounds = adventureRounds(p.words);
     else rounds = buildRounds(p.words, p.game);
     if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
     return runSession(root, { title: p.title, rounds, again });
@@ -476,9 +474,17 @@
 
   /* ---------- screens: word lists ---------- */
   function masteryStars(w) {
-    const m = Store.mastery(w);
-    return m >= 3 ? Pixel.svg('star', 'star') : m === 2 ? `<span class="star" style="opacity:.5;width:.8em;display:inline-block">${Pixel.svg('star')}</span>` : '';
+    const st = Store.mastery(w);
+    return `<span class="stage-ic" title="${Store.STAGES[st].name}">${Store.STAGES[st].icon}</span>`;
   }
+  function pathPanel(words) {
+    return `<div class="path">${Store.STAGES.map((S, i) => {
+      const ws = words.filter(w => Store.mastery(w) === i);
+      return `<div class="path-step st${i}"><div class="path-h"><span class="path-ic">${S.icon}</span><b>${S.name}</b><span class="path-n">${ws.length}</span></div>
+        <div class="path-words">${ws.map(w => `<span>${esc(w)}</span>`).join('')}</div></div>`;
+    }).join('<div class="path-arrow">➜</div>')}</div>`;
+  }
+
 
   UI.register('list', (root, { listId }) => {
     const l = Store.list(listId) || Store.lists()[0];
@@ -491,12 +497,13 @@
           <div class="row"><h3 style="margin:0;font-size:clamp(18px,3vmin,28px)">Mes ${l.words.length} mots — touche un mot pour l'entendre</h3><span class="spacer"></span>
             ${Store.lists().length > 1 ? '<button class="pix-btn small wood" data-a="all">Autres listes</button>' : ''}</div>
           <div class="chips" style="margin-top:12px">${l.words.map((w, i) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${i * 0.04}s"><span>${FR.colorize(w)}</span>${masteryStars(w)}</span>`).join('')}</div>
+          ${pathPanel(l.words)}
           <div class="progress"><div style="width:${pct}%"></div></div>
           <div class="muted" style="margin-top:6px;font-size:clamp(14px,2.2vmin,20px)">Maîtrise : ${pct}%</div>
         </div>
         <div style="height:var(--gap)"></div>
         <button class="tile" data-a="adv" style="width:100%;min-height:clamp(110px,18vmin,170px);flex-direction:row;gap:3vmin;background-image:url(${Pixel.texture('gemme')})">
-          <span class="ic">${Pixel.svg('sword')}</span><span>AVENTURE<br><span class="sub">Tous les jeux mélangés</span></span>
+          <span class="ic">${Pixel.svg('sword')}</span><span>MON PARCOURS<br><span class="sub">Chaque mot avec le jeu de son étape</span></span>
         </button>
         <h2 class="pix-title">Mini-jeux</h2>
         <div class="games-grid">${Object.entries(GAMES).map(([k, g], i) => `
@@ -560,11 +567,11 @@
           <button class="tile" data-n="${n2}" style="background-image:url(${Pixel.texture('or')})"><span class="ic">${Pixel.svg('trophy')}</span>Grande révision<span class="sub">${n2} mots</span></button>
           <button class="tile" data-r="1" style="background-image:url(${Pixel.texture('eau')})"><span class="ic">${Pixel.svg('rain')}</span>Pluie de mots<span class="sub">Tous les mots</span></button>
         </div>
-        <div class="boxes">${[[0, 'À apprendre', 'Les mots encore difficiles'], [2, 'Presque su', 'Réussis 2 fois de suite'], [3, 'Je sais !', 'Réussis 3 fois de suite']].map(([m, t, d], i) => {
-          const n = all.filter(w => (m === 0 ? Store.mastery(w) <= 1 : Store.mastery(w) === m)).length;
-          return `<div class="box box${i + 1}"><div class="box-lid"></div><div class="box-n">${n}</div><b>${t}</b><small>${d}</small></div>`;
+        <div class="boxes">${Store.STAGES.map((S, i) => {
+          const n = all.filter(w => Store.mastery(w) === i).length;
+          return `<div class="box box${i + 1}"><div class="box-lid"></div><div class="box-n">${n}</div><b>${S.icon} ${S.name}</b></div>`;
         }).join('')}</div>
-        <p class="prompt" style="margin-top:2vmin">Les mots montent de boîte quand tu les réussis du premier coup !</p>
+        <p class="prompt" style="margin-top:2vmin">Un mot passe à l'étape suivante quand tu le réussis du premier coup. Pour être maîtrisé, il faut le réussir de mémoire deux fois, à deux moments différents !</p>
       </div>`));
     root.querySelectorAll('[data-n]').forEach(b => b.onclick = () => UI.go('session', { title: 'Révision', mode: 'revision', words: Store.revisionWords(+b.dataset.n) }));
     root.querySelector('[data-r]').onclick = () => UI.go('rain', { title: 'Pluie de mots', words: Store.revisionWords(10) });

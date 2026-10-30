@@ -82,6 +82,7 @@ public class MainActivity extends ComponentActivity {
     private ActivityResultLauncher<Uri> takePictureLauncher;
     private ActivityResultLauncher<String> pickImageLauncher;
     private ActivityResultLauncher<String> micPermissionLauncher;
+    private ActivityResultLauncher<String> notifPermissionLauncher;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -114,6 +115,9 @@ public class MainActivity extends ComponentActivity {
                 pendingPermission = null;
             }
         });
+
+        notifPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {});
+        PetWorker.schedule(this);
 
         final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
@@ -476,6 +480,47 @@ public class MainActivity extends ComponentActivity {
         public void stopSpeak() {
             if (tts != null) tts.stop();
             if (neural != null) neural.stop();
+        }
+
+        @JavascriptInterface
+        public void syncPets(String json) {
+            try {
+                PetLogic.savePets(MainActivity.this, json);
+                PetWidget.updateAll(MainActivity.this);
+            } catch (Exception ignored) {
+            }
+        }
+
+        @JavascriptInterface
+        public void setPetFrames(String json) {
+            executor.submit(() -> {
+                try {
+                    PetLogic.saveFrames(MainActivity.this, json);
+                    PetWidget.updateAll(MainActivity.this);
+                } catch (Exception ignored) {
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void setNotifications(boolean on) {
+            PetLogic.setNotifications(MainActivity.this, on);
+        }
+
+        @JavascriptInterface
+        public boolean notificationsAllowed() {
+            if (Build.VERSION.SDK_INT < 33) return true;
+            return ContextCompat.checkSelfPermission(MainActivity.this, "android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public void requestNotifications() {
+            if (Build.VERSION.SDK_INT < 33) return;
+            runOnUiThread(() -> {
+                if (ContextCompat.checkSelfPermission(MainActivity.this, "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                    notifPermissionLauncher.launch("android.permission.POST_NOTIFICATIONS");
+                }
+            });
         }
 
         @JavascriptInterface
