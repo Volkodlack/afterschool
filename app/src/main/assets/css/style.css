@@ -1137,3 +1137,18 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 .ew.miss { color: #d63a2a; text-decoration: underline wavy rgba(214,58,42,.6); }
 @keyframes ewPop { from { transform: scale(1.35); color: #2f9e44; } }
 .ear-result { max-height: 40vh; overflow: auto; text-align: left; }
+
+/* ---------- lecture corrigée par l'IA ---------- */
+.rc-prompt { margin: 0; }
+.rc-status { margin: 2px 0 6px; }
+.rc-status.listening .ear-mic { animation: earPulse .9s ease-in-out infinite; }
+.reader .w.rc-ok { color: #2b8a3e; }
+.reader .w.rc-next { background: #ffe066; box-shadow: 0 0 0 3px #ffe066; }
+.reader .w.rc-miss { color: #d63a2a; text-decoration: underline wavy rgba(214,58,42,.7); text-underline-offset: .15em; }
+.reader.grid-mode .item.rc-ok { background: #d3f9d8; }
+.reader.grid-mode .item.rc-miss { background: #ffe3e3; }
+.rc-stats { display: flex; gap: clamp(12px, 3vmin, 36px); justify-content: center; flex-wrap: wrap; text-align: center; margin: 1vmin 0; }
+.rc-stats .big-num { font-size: clamp(34px, 7vmin, 72px); }
+.rc-missed { justify-content: center; }
+.rc-missed .chip { cursor: pointer; font: inherit; color: #d63a2a; }
+.theme-poney .reader .w.rc-next { background: #ffe0f0; box-shadow: 0 0 0 3px #ffe0f0; }

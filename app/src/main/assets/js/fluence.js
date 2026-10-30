@@ -188,6 +188,7 @@
         <span class="rec-dot" style="display:none"></span>
         <button class="pix-btn green big" data-a="go">${Pixel.svg('play')} C'est parti !</button>
         <button class="pix-btn small" data-a="cancel" style="display:none">Annuler</button>
+        ${ReadCheck.canCheck(sheet) ? `<button class="pix-btn purple big" data-a="ai">🤖 Lecture corrigée</button>` : ''}
       </div></div>`);
     root.appendChild(wrap);
     const reader = wrap.querySelector('.reader');
@@ -443,6 +444,8 @@
     wrap.querySelector('[data-a=minus]').onclick = () => { settings.readerScale = Math.max(.6, settings.readerScale - .12); Store.save(); render(); };
     wrap.querySelector('[data-a=plus]').onclick = () => { settings.readerScale = Math.min(2.2, settings.readerScale + .12); Store.save(); render(); };
     wrap.querySelector('[data-a=hist]').onclick = showHistory;
+    const aiB = wrap.querySelector('[data-a=ai]');
+    if (aiB) aiB.onclick = () => { if (mode === 'reading' || mode === 'countdown') return; UI.go('readCheck', { sheetId: sheet.id }); };
     wrap.querySelector('[data-a=edit]').onclick = async () => { if (await UI.parentGate()) UI.go('sheetEdit', { sheetId: sheet.id }); };
     const ph = wrap.querySelector('[data-a=photo]');
     if (ph) ph.onclick = async () => {
@@ -467,5 +470,5 @@
     };
   });
 
-  window.Fluence = { TYPES };
+  window.Fluence = { TYPES, buildUnits };
 })();

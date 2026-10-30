@@ -122,6 +122,16 @@
       body.appendChild(el(html`<div class="list-row"><div class="grow"><div class="t">${esc(s.title)}</div>
         <div class="s">${att.map(a => (a.ms / 1000).toFixed(1) + ' s').join(' → ')}</div></div></div>`));
     });
+    const aiSheets = Store.sheets().filter(s => (s.ai || []).length);
+    if (aiSheets.length) {
+      body.appendChild(el('<h3 style="margin-top:20px">Lecture corrigée par l\'IA (mots bien lus · mots bien lus par minute)</h3>'));
+      aiSheets.forEach(s => {
+        const a = s.ai.slice(-5), lastA = a[a.length - 1];
+        body.appendChild(el(html`<div class="list-row"><div class="grow"><div class="t">${esc(s.title)}</div>
+          <div class="s">${a.map(x => x.pct + ' % · ' + x.mclm + ' m/min').join(' → ')}</div>
+          ${lastA.missed && lastA.missed.length ? `<div class="s">À retravailler : ${lastA.missed.slice(0, 10).map(esc).join(', ')}</div>` : ''}</div></div>`));
+      });
+    }
   }
 
   function reglages(body) {

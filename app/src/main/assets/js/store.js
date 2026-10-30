@@ -252,7 +252,7 @@
       const s = this.sheet(id);
       if (!s) return;
       await Blobs.del(s.imageId);
-      for (const a of s.attempts || []) await Blobs.del(a.recId);
+      for (const a of (s.attempts || []).concat(s.ai || [])) await Blobs.del(a.recId);
       data.sheets = data.sheets.filter(x => x.id !== id); save(true);
     },
     async addAttempt(sheet, attempt) {
