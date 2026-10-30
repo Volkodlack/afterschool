@@ -78,6 +78,11 @@ public class MainActivity extends ComponentActivity {
     private Uri photoUri;
     private PermissionRequest pendingPermission;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private InkReader ink;
+    private AsrEngine asr;
+    private String pendingAsr;
+    private AsrEngine asr() { if (asr == null) asr = new AsrEngine(this, code -> { js(code); return kotlin.Unit.INSTANCE; }); return asr; }
+    private InkReader ink() { if (ink == null) ink = new InkReader(code -> { js(code); return kotlin.Unit.INSTANCE; }); return ink; }
 
     private ActivityResultLauncher<Uri> takePictureLauncher;
     private ActivityResultLauncher<String> pickImageLauncher;
@@ -106,6 +111,11 @@ public class MainActivity extends ComponentActivity {
             }
         });
         micPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+            if (pendingAsr != null) {
+                String id = pendingAsr; pendingAsr = null;
+                if (Boolean.TRUE.equals(granted)) asr().start(id);
+                else js("AS_native.asrError(" + JSONObject.quote(id) + ", 'mic')");
+            }
             if (pendingPermission != null) {
                 if (Boolean.TRUE.equals(granted)) {
                     pendingPermission.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
@@ -302,6 +312,7 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (asr != null) asr.cancel();
         if (tts != null) tts.stop();
         if (neural != null) neural.stop();
         js("window.AS_pause&&AS_pause()");
@@ -399,6 +410,46 @@ public class MainActivity extends ComponentActivity {
     }
 
     private class Bridge {
+        @JavascriptInterface
+        public boolean asrAvailable() {
+            try { return asr().available(); } catch (Throwable t) { return false; }
+        }
+
+        @JavascriptInterface
+        public void asrStart(String id) {
+            runOnUiThread(() -> {
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    asr().start(id);
+                } else {
+                    pendingAsr = id;
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void asrStop() { if (asr != null) asr.stop(); }
+
+        @JavascriptInterface
+        public void asrCancel() { if (asr != null) asr.cancel(); }
+
+        @JavascriptInterface
+        public String inkStatus() {
+            final String[] out = {"unknown"};
+            try { out[0] = ink().getStatus(); } catch (Throwable t) { out[0] = "unsupported"; }
+            return out[0];
+        }
+
+        @JavascriptInterface
+        public void inkPrepare() {
+            runOnUiThread(() -> { try { ink().prepare(); } catch (Throwable t) { js("AS_native.inkStatus('unsupported')"); } });
+        }
+
+        @JavascriptInterface
+        public void inkRecognize(String json, String id) {
+            runOnUiThread(() -> { try { ink().recognize(json, id); } catch (Throwable t) { js("AS_native.onInk(" + JSONObject.quote(id) + ", [])"); } });
+        }
+
         @JavascriptInterface
         public String getVoices() {
             JSONArray arr = new JSONArray();

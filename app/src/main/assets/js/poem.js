@@ -39,9 +39,12 @@
     if (!lines.length) return 0;
     return lines.reduce((a, _, i) => a + Math.min(3, p.m[i] || 0), 0) / (lines.length * 3);
   }
-  function bump(p, idx, d) {
+  /* 3 = « maîtrisé ». Quand l'IA qui écoute est disponible, seul un vers vraiment récité (vérifié) peut l'atteindre :
+     cocher « je l'ai dit » ne suffit plus pour arriver à 100 %. */
+  function bump(p, idx, d, verified) {
     p.m = p.m || [];
-    idx.forEach(i => { p.m[i] = Math.max(0, Math.min(3, (p.m[i] || 0) + d)); });
+    const cap = verified || !Ear.available() ? 3 : 2;
+    idx.forEach(i => { const o = p.m[i] || 0; p.m[i] = Math.max(0, Math.min(Math.max(cap, d > 0 ? 0 : o), o + d)); });
     p.last = Date.now();
     Store.save(true);
   }
@@ -147,7 +150,7 @@
     ['next', '➡️', 'Le vers suivant', 'Quel vers vient après ?'],
     ['order', '🔀', 'Vers mélangés', 'Remets la strophe dans l\'ordre'],
     ['draw', '🎨', 'Dessine la strophe', 'Une image pour s\'en souvenir'],
-    ['recite', '🎤', 'Je récite', 'Enregistre-toi et réécoute-toi']
+    ['recite', '🎤', 'Je récite', 'Je t\'écoute et je vérifie']
   ];
   let scope = {};
   UI.register('poem', (root, { id }) => {
@@ -208,6 +211,37 @@
     root.appendChild(wrap);
     const poemBox = (fn) => `<div class="poem-text">${all.map((l, i) => idxs.includes(i) ? `<div class="pl ${i > 0 && all[i - 1].s !== l.s && idxs.includes(i - 1) ? 'new-s' : ''}" data-i="${i}">${fn ? fn(l, i) : lineHTML(l.t, colors[i])}</div>` : '').join('')}</div>`;
 
+    /* --- l'IA écoute : les mots apparaissent quand ils sont récités --- */
+    const EAR = Ear.available();
+    function earPanel(box, lineIdxs, { onEnd, auto = true }) {
+      const texts = lineIdxs.map(i => all[i].t);
+      box.innerHTML = `<div class="ear-status"><span class="ear-mic">🎤</span><span class="st">Je prépare mes oreilles…</span></div><div class="poem-text ear-box">${Ear.revealHTML(Ear.match(texts, ''))}</div>`;
+      const eb = box.querySelector('.ear-box'), st = box.querySelector('.st');
+      let ended = false, passT = 0;
+      const sess = Ear.listen({
+        onState(x) { if (x === 'listening') { st.textContent = 'Je t\'écoute ! Vas-y, récite…'; box.classList.add('listening'); } },
+        onText(t) {
+          const r = Ear.match(texts, t);
+          Ear.update(eb, r);
+          const last = r.lines[r.lines.length - 1];
+          if (auto && r.score >= 0.85 && last.score >= 0.6 && !passT) passT = setTimeout(finish, 900);
+        },
+        onError(m) { st.textContent = m === 'mic' ? 'Le micro n\'est pas autorisé 😕' : 'Oups, je n\'arrive pas à écouter.'; box.classList.remove('listening'); }
+      });
+      async function finish() {
+        if (ended) return; ended = true; clearTimeout(passT);
+        st.textContent = 'Je vérifie…'; box.classList.remove('listening');
+        const r = await sess.stop();
+        if (!alive) return;
+        onEnd(Ear.match(texts, r.text), r.blob, r.error);
+      }
+      const api = { finish, cancel() { ended = true; clearTimeout(passT); sess.cancel(); } };
+      cleanups.push(api.cancel);
+      return api;
+    }
+    const cleanups = [];
+    const verdict = res => res.score >= 0.999 ? 'Parfait, tous les mots y sont !' : res.score >= 0.8 ? 'Très bien, presque tout !' : res.score >= 0.5 ? 'Il manque encore des mots.' : 'Il manque beaucoup de mots.';
+
     /* --- écouter --- */
     if (act === 'listen') {
       wrap.innerHTML = `<div class="prompt">Écoute bien. Ferme les yeux et imagine la scène !</div>${poemBox()}<div class="row center"><button class="pix-btn gold big" data-a="play">${Pixel.svg('speaker')} Écouter</button><button class="pix-btn green" data-a="ok">J'ai compris !</button></div>`;
@@ -250,17 +284,37 @@
           <div class="snow-box">${part.map(i => `<div class="pl ${i === part[part.length - 1] ? 'fresh' : ''}">${lineHTML(all[i].t, colors[i])}</div>`).join('')}</div>
           <div class="row center"><button class="pix-btn gold" data-a="hear">${Pixel.svg('speaker')} Écouter</button><button class="pix-btn blue big" data-a="hide">🙈 Je cache et je récite</button></div>`;
         wrap.querySelector('[data-a=hear]').onclick = async () => { for (const i of part) { await speakAsync(all[i].t, .8); await sleep(200); } };
-        wrap.querySelector('[data-a=hide]').onclick = () => {
+        const success = (verified) => {
+          SFX.play('good'); UI.burstAt(wrap.querySelector('.snow-box') || wrap, { n: 14, spread: 100 }); ok++;
+          bump(p, [part[part.length - 1]], 1, verified);
+          if (n < idxs.length) { n++; setTimeout(render, verified ? 900 : 500); } else { bump(p, idxs, 1, verified); done(Math.min(12, 3 + ok), 10 + ok * 4, 'Boule de neige réussie !'); }
+        };
+        if (EAR) wrap.querySelector('[data-a=hide]').onclick = () => {
+          Speech.stop();
+          const sb = wrap.querySelector('.snow-box');
+          sb.classList.add('hidden-lines'); sb.style.display = 'none';
+          const eb = el('<div class="ear-panel"></div>'); sb.after(eb);
+          const r = wrap.querySelector('.row:last-child');
+          r.innerHTML = `<button class="pix-btn" data-a="peek">👀 Regarder</button><button class="pix-btn green big" data-a="end">✔ J'ai fini</button>`;
+          let peek = 0;
+          r.querySelector('[data-a=peek]').onclick = () => { peek++; sb.style.display = sb.style.display === 'none' ? '' : 'none'; sb.classList.remove('hidden-lines'); };
+          const ear = earPanel(eb, part, { onEnd(res) {
+            const pass = res.score >= 0.8;
+            if (pass) { eb.querySelector('.st').textContent = verdict(res); return success(!peek); }
+            SFX.play('bad');
+            eb.innerHTML = `<div class="ear-status"><span class="st">${verdict(res)} Les mots en rouge ont été oubliés :</span></div><div class="poem-text ear-box">${Ear.revealHTML(res, { showAll: true })}</div>`;
+            r.innerHTML = `<button class="pix-btn gold big" data-a="again">🔁 Je réessaie</button>`;
+            r.querySelector('[data-a=again]').onclick = () => { SFX.play('pop'); render(); };
+          } });
+          r.querySelector('[data-a=end]').onclick = () => ear.finish();
+        };
+        else wrap.querySelector('[data-a=hide]').onclick = () => {
           wrap.querySelector('.snow-box').classList.add('hidden-lines');
           const r = wrap.querySelector('.row:last-child');
           r.innerHTML = `<button class="pix-btn" data-a="peek">👀 Regarder</button><button class="pix-btn red" data-a="no">Pas encore</button><button class="pix-btn green big" data-a="yes">✔ Je l'ai dit !</button>`;
           r.querySelector('[data-a=peek]').onclick = () => wrap.querySelector('.snow-box').classList.toggle('hidden-lines');
           r.querySelector('[data-a=no]').onclick = () => { SFX.play('pop'); render(); };
-          r.querySelector('[data-a=yes]').onclick = () => {
-            SFX.play('good'); UI.burstAt(wrap.querySelector('.snow-box'), { n: 14, spread: 100 }); ok++;
-            bump(p, [part[part.length - 1]], 1);
-            if (n < idxs.length) { n++; setTimeout(render, 500); } else { bump(p, idxs, 1); done(Math.min(12, 3 + ok), 10 + ok * 4, 'Boule de neige réussie !'); }
-          };
+          r.querySelector('[data-a=yes]').onclick = () => success(false);
         };
         Speech.speak(all[part[part.length - 1]].t, { rate: .8 });
       };
@@ -288,12 +342,32 @@
         }
         return out + esc(l.t.slice(pos));
       };
+      const renderEar = () => {
+        wrap.innerHTML = `<div class="prompt">Niveau 5 / 5 · Plus rien ! Récite-la de mémoire, je t'écoute.</div><div class="erase-dots">${LV.map(() => `<i class="on"></i>`).join('')}</div>
+          <div class="ear-panel"></div><div class="row center"><button class="pix-btn green big" data-a="end">✔ J'ai fini</button></div>`;
+        const ear = earPanel(wrap.querySelector('.ear-panel'), idxs, { onEnd(res) {
+          res.lines.forEach((l, k) => bump(p, [idxs[k]], l.score >= 0.85 ? (peeks <= 2 ? 2 : 1) : l.score >= 0.6 ? 1 : 0, true));
+          const pc = Math.round(res.score * 100);
+          if (res.score >= 0.8) SFX.play('good'); else SFX.play('bad');
+          done(res.score >= 0.95 ? 10 : res.score >= 0.8 ? 7 : res.score >= 0.5 ? 4 : 2, 10 + Math.round(res.score * 25), verdict(res), [`${pc} % des mots récités`, `${peeks} coup${peeks > 1 ? 's' : ''} d'œil`]);
+        } });
+        wrap.querySelector('[data-a=end]').onclick = () => ear.finish();
+      };
       const render = () => {
+        if (EAR && level === 4) return renderEar();
         wrap.innerHTML = `<div class="prompt">Niveau ${level + 1} / 5 · ${LV[level]}</div><div class="erase-dots">${LV.map((_, j) => `<i class="${j <= level ? 'on' : ''}"></i>`).join('')}</div>
           ${poemBox((l, i) => eraseLine(l, i))}
           <div class="muted">Touche un trou pour voir le mot (essaie de ne pas le faire 😉)</div>
           <div class="row center"><button class="pix-btn green big" data-a="ok">${level < 4 ? '✔ Je l\'ai lue, niveau suivant' : '✔ Je l\'ai récitée !'}</button></div>`;
         wrap.querySelectorAll('.gap').forEach(g => g.onclick = () => { if (g.classList.contains('peek')) return; peeks++; g.classList.add('peek'); g.innerHTML = g.dataset.w; SFX.play('pop'); });
+        // touche un vers : il est lu à voix haute, sans les mots cachés
+        wrap.querySelectorAll('.pl').forEach(x => x.onclick = (e) => {
+          if (e.target.closest('.gap')) return;
+          const c = x.cloneNode(true);
+          c.querySelectorAll('.gap:not(.peek)').forEach(g => g.replaceWith(' … '));
+          const t = c.textContent.replace(/\s+/g, ' ').replace(/…\s*[,.;:!?]+/g, '…').trim();
+          if (t.replace(/[…\s.,;:!?'’-]/g, '')) { x.classList.add('hl'); Speech.speak(t, { rate: .8, onDone: () => x.classList.remove('hl') }); }
+        });
         wrap.querySelector('[data-a=ok]').onclick = () => {
           SFX.play('good');
           if (level < 4) { level++; render(); }
@@ -331,7 +405,6 @@
           if (opts[j] === answer) {
             SFX.play('good'); UI.burstAt(b, { n: 12, spread: 90 }); if (!errs) good++;
             bump(p, [act === 'complete' ? i : i + 1], errs ? 0 : 1);
-            if (act === 'complete') Speech.speak(l.t, { rate: .8 });
             setTimeout(() => { if (++k < order.length) render(); else done(Math.max(2, good * 2), good * 8 + 10, good === order.length ? 'Sans faute !' : 'Bien joué !', [`${good} / ${order.length} du premier coup`]); }, 900);
           } else { errs++; SFX.play('bad'); b.disabled = true; UI.shake(b); }
         });
@@ -421,6 +494,30 @@
           sf.innerHTML = `<div class="pl">${esc(ws.slice(0, Math.max(2, Math.ceil(ws.length / 3))).join(' '))}…</div>`;
           SFX.play('pop');
         };
+        if (EAR) {
+          let ear = null, earBox = el('<div class="ear-panel"></div>');
+          wrap.querySelector('.recite-stage').after(earBox);
+          go.onclick = () => {
+            if (ear) { go.disabled = true; ear.finish(); return; }
+            Speech.stop();
+            t0 = performance.now(); chrono.classList.add('running'); hint.disabled = false; shown = -1; hints = 0; sf.innerHTML = '';
+            tick = setInterval(() => chrono.textContent = ((performance.now() - t0) / 1000).toFixed(1) + ' s', 100);
+            go.className = 'pix-btn red big'; go.innerHTML = Pixel.svg('stop') + " J'ai fini !";
+            ear = earPanel(earBox, idxs, { auto: false, async onEnd(res, blob) {
+              const ms = performance.now() - t0;
+              clearInterval(tick); chrono.classList.remove('running');
+              const entry = { id: Store.uid(), date: Date.now(), ms: Math.round(ms), hints, recId: null, score: Math.round(res.score * 100) };
+              if (blob) { entry.recId = 'prec_' + entry.id; await Store.Blobs.put(entry.recId, blob); }
+              p.recs = (p.recs || []).concat(entry);
+              while (p.recs.filter(x => x.recId).length > 10) { const o = p.recs.find(x => x.recId); await Store.Blobs.del(o.recId); o.recId = null; }
+              res.lines.forEach((l, k) => bump(p, [idxs[k]], l.score >= 0.9 ? (hints === 0 ? 3 : 2) : l.score >= 0.6 ? 1 : l.score < 0.3 ? -1 : 0, true));
+              entry.self = res.score >= 0.9 ? 2 : res.score >= 0.6 ? 1 : 0;
+              Store.save(true);
+              earEval(entry, res, blob);
+            } });
+          };
+          return;
+        }
         go.onclick = async () => {
           if (rec) { stop(); return; }
           try { if (navigator.mediaDevices && window.MediaRecorder) stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { stream = null; UI.toast('Micro non autorisé : le chrono marche quand même'); }
@@ -448,6 +545,24 @@
           if (r.fake) fin(); else { r.onstop = fin; r.stop(); }
         };
       };
+      const earEval = (entry, res, blob) => {
+        const pc = entry.score;
+        const m = UI.modal(html`<h2>${pc >= 95 ? '😎' : pc >= 80 ? '🙂' : '😅'} ${pc} % des mots récités</h2>
+          <p>${verdict(res)} · ${(entry.ms / 1000).toFixed(1)} s · ${entry.hints} aide${entry.hints > 1 ? 's' : ''} du souffleur</p>
+          <div class="progress big"><div style="width:${pc}%"></div></div>
+          <div class="poem-text ear-box ear-result">${Ear.revealHTML(res, { showAll: true })}</div>
+          <p class="muted">En rouge : les mots que je n'ai pas entendus.</p>
+          <div class="row center">${blob ? `<button class="pix-btn gold big" data-a="play">${Pixel.svg('speaker')} Me réécouter</button>` : ''}
+            <button class="pix-btn green big" data-a="ok">Continuer</button></div>`, { locked: true });
+        let player = null;
+        const pb = m.querySelector('[data-a=play]');
+        if (pb) pb.onclick = () => { if (player) player.pause(); player = new Audio(URL.createObjectURL(blob)); player.play(); };
+        m.querySelector('[data-a=ok]').onclick = () => {
+          if (player) player.pause();
+          UI.closeModal();
+          done(pc >= 95 ? 12 : pc >= 80 ? 8 : pc >= 50 ? 4 : 2, 15 + Math.round(pc / 3), pc >= 95 ? 'Bravo, quelle récitation !' : pc >= 80 ? 'Tu y es presque !' : 'Continue, ça va venir !', [`${pc} % des mots récités`]);
+        };
+      };
       const selfEval = (entry, blob) => {
         const m = UI.modal(html`<h2>Comment ça s'est passé ?</h2>
           <p>${(entry.ms / 1000).toFixed(1)} s · ${entry.hints} aide${entry.hints > 1 ? 's' : ''} du souffleur</p>
@@ -469,15 +584,15 @@
         const box = wrap.querySelector('.recs');
         const list = (p.recs || []).slice().reverse().slice(0, 8);
         if (!list.length) return;
-        box.innerHTML = `<h3>Mes récitations</h3>` + list.map(r => `<div class="list-row"><div class="grow"><div class="t">${new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · ${(r.ms / 1000).toFixed(1)} s ${['😅', '🙂', '😎'][r.self] || ''}</div><div class="s">${r.hints} aide${r.hints > 1 ? 's' : ''} du souffleur</div></div>
+        box.innerHTML = `<h3>Mes récitations</h3>` + list.map(r => `<div class="list-row"><div class="grow"><div class="t">${new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · ${(r.ms / 1000).toFixed(1)} s ${['😅', '🙂', '😎'][r.self] || ''}${r.score != null ? ` · <b>${r.score} %</b>` : ''}</div><div class="s">${r.hints} aide${r.hints > 1 ? 's' : ''} du souffleur</div></div>
           ${r.recId ? `<button class="pix-btn small gold" data-rec="${r.recId}">${Pixel.svg('speaker')} Écouter</button>` : ''}</div>`).join('');
         let player = null;
         box.querySelectorAll('[data-rec]').forEach(b => b.onclick = async () => { const blob = await Store.Blobs.get(b.dataset.rec); if (!blob) return; if (player) player.pause(); player = new Audio(URL.createObjectURL(blob)); player.play(); });
       }
       render();
-      return () => { alive = false; clearInterval(tick); if (stream) stream.getTracks().forEach(t => t.stop()); };
+      return () => { alive = false; clearInterval(tick); cleanups.forEach(f => f()); if (stream) stream.getTracks().forEach(t => t.stop()); };
     }
-    return () => { alive = false; Speech.stop(); };
+    return () => { alive = false; Speech.stop(); cleanups.forEach(f => f()); };
   });
 
   window.Poems = { parse, mastery, poems };

@@ -39,7 +39,7 @@
     const chars = [...target];
     document.getElementById('screen').classList.add('typing', 'full');
     const slots = el('<div class="slots"></div>');
-    let typed = [], locked = false;
+    let typed = [], locked = false, raw = null;
     const editable = chars.map((c, i) => isSep(c) ? -1 : i).filter(i => i >= 0);
     function render() {
       slots.innerHTML = '';
@@ -55,24 +55,83 @@
       if (hideLength) slots.querySelectorAll('.slot:not(.filled):not(.cursor)').forEach(s => s.style.opacity = .35);
     }
     render();
+    const submit = () => {
+      if (locked) return;
+      if (raw == null && typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
+      const a = raw != null ? raw : attempt();
+      if (same(a, target)) locked = true;
+      onSubmit(a);
+    };
     const kb = UI.keyboard({
       space: false,
-      onKey(ch) { if (ch === ' ' || ch === "'" || ch === '-') return; if (typed.length < editable.length) { typed.push(ch); render(); } },
-      onDel() { typed.pop(); render(); },
-      onOk() {
-        if (locked) return;
-        if (typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
-        const a = attempt();
-        if (same(a, target)) locked = true;
-        onSubmit(a);
-      }
+      onKey(ch) { raw = null; if (ch === ' ' || ch === "'" || ch === '-') return; if (typed.length < editable.length) { typed.push(ch); render(); } },
+      onDel() { raw = null; typed.pop(); render(); },
+      onOk: submit
     });
     function attempt() {
       let ti = 0;
-      return chars.map(c => isSep(c) ? c : typed[ti++]).join('');
+      return chars.map(c => isSep(c) ? c : (typed[ti++] || '')).join('');
+    }
+    /* texte reconnu (écriture à la main) -> cases */
+    function setText(txt) {
+      const t = FR.norm(txt || '');
+      const letters = [...t].filter(c => !isSep(c) && c.trim());
+      typed = letters.slice(0, editable.length);
+      // ce que l'enfant a vraiment écrit (même trop long ou trop court) est ce qui est évalué
+      raw = letters.length === editable.length ? null : t;
+      render();
     }
     area.appendChild(slots);
+    /* ----- clavier ou écriture à la main ----- */
+    let pad = null, recoT = 0, recoN = 0;
+    const st = Store.data.settings;
+    const sw = Ink.supported() ? el(`<div class="input-switch"><button class="pix-btn small" data-m="kbd">⌨️ Clavier</button><button class="pix-btn small" data-m="ink">✏️ À la main</button></div>`) : null;
+    async function readInk(strokes) {
+      const n = ++recoN;
+      if (!strokes.length) { typed = []; raw = null; render(); return true; }
+      slots.classList.add('reading');
+      const c = await Ink.recognize(strokes, pad.w, pad.h);
+      if (n !== recoN) return false;
+      slots.classList.remove('reading');
+      if (c == null) { UI.toast('Je n\'arrive pas à lire, réessaie 🙂'); return false; }
+      setText(c[0] || '');
+      return true;
+    }
+    function setMode(m) {
+      if (m === 'ink' && !Ink.supported()) m = 'kbd';
+      st.inputMode = m; Store.save();
+      if (sw) sw.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+      typed = []; raw = null; render();
+      if (m === 'ink') {
+        kb.remove();
+        if (!pad) pad = Ink.pad({
+          onChange(strokes) { clearTimeout(recoT); recoT = setTimeout(() => readInk(strokes), 450); },
+          async onOk(strokes) {
+            if (locked) return;
+            if (!strokes.length) { UI.shake(slots); SFX.play('bad'); return; }
+            clearTimeout(recoT);
+            if (await readInk(strokes)) submit();
+          }
+        });
+        area.appendChild(pad.el);
+        if (Ink.status() !== 'ready') {
+          const t = UI.toast('✏️ Je prépare l\'écriture à la main…');
+          Ink.prepare().then(ok => {
+            if (ok) UI.toast('✏️ C\'est prêt, tu peux écrire !');
+            else { UI.toast('Il faut internet une première fois pour l\'écriture à la main.'); setMode('kbd'); }
+          });
+        }
+      } else {
+        if (pad) pad.el.remove();
+        area.appendChild(kb);
+      }
+    }
+    if (sw) {
+      area.appendChild(sw);
+      sw.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SFX.play('pop'); setMode(b.dataset.m); });
+    }
     area.appendChild(kb);
+    setMode(st.inputMode === 'ink' ? 'ink' : 'kbd');
     return {
       slots, kb,
       showDiff() {
@@ -85,6 +144,8 @@
         });
       },
       keepCorrect() {
+        raw = null;
+        if (pad) { pad.clear(); typed = []; render(); return; }
         const lt = [...target.toLowerCase()];
         const kept = [];
         let ti = 0;
@@ -95,10 +156,11 @@
         }
         typed = kept; render();
       },
-      reset() { typed = []; render(); },
+      reset() { typed = []; raw = null; if (pad) pad.clear(); render(); },
       setFirst(ch) { if (!typed.length) { typed = [ch]; render(); } },
       /* reveal: keep the correct beginning, then add the next correct letter */
       hint() {
+        raw = null; if (pad) pad.clear();
         const lt = [...target.toLowerCase()].filter(c => !isSep(c));
         let k = 0;
         while (k < typed.length && typed[k] === lt[k]) k++;

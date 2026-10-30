@@ -1106,3 +1106,33 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 .theme-poney .recs h3 { text-shadow: 0 2px 0 #e08ab0; }
 .theme-poney .recs .list-row { border-radius: 14px; border-color: #ffc2dc; }
 @media (max-width: 760px) { .draw-wrap { grid-template-columns: 1fr; } .voice-btns .pix-btn { min-width: 0; } }
+
+/* ---------- écriture à la main ---------- */
+.input-switch { display: flex; gap: 8px; justify-content: center; }
+.input-switch .pix-btn { font-size: clamp(13px, 2vh, 18px); padding: .3em .8em; }
+.ink-pad { width: min(100%, 1100px); display: flex; flex-direction: column; gap: clamp(6px, 1vh, 10px); padding: clamp(6px, 1.1vh, 14px);
+  background: var(--stone-lo); border: 4px solid var(--ink); box-shadow: inset 4px 4px 0 var(--stone), 0 6px 0 rgba(43,29,18,.4); }
+.ink-wrap { position: relative; width: 100%; height: clamp(150px, 30vh, 340px); background: #fffdf6; border: 3px solid var(--ink); touch-action: none; overflow: hidden; }
+.ink-wrap canvas { position: absolute; inset: 0; touch-action: none; cursor: crosshair; }
+.ink-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; color: rgba(43,29,18,.35);
+  font-size: clamp(16px, 3vh, 28px); transition: opacity .2s; }
+.ink-btns { display: flex; gap: 8px; justify-content: center; }
+.ink-btns .key { max-width: 260px; }
+.slots.reading { opacity: .6; animation: inkPulse .8s ease-in-out infinite alternate; }
+@keyframes inkPulse { to { opacity: .95; } }
+.theme-poney .ink-pad { border-radius: 26px; background: #f3e8ff; border: 3px solid #d8c2ff; box-shadow: 0 6px 0 rgba(156,112,208,.25); }
+.theme-poney .ink-wrap { border-radius: 18px; border: 2px solid #d8c2ff; }
+
+/* ---------- l'IA écoute (poésie) ---------- */
+.ear-panel { width: min(100%, 900px); display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.ear-status { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: clamp(16px, 2.4vmin, 24px); text-align: center; }
+.ear-mic { font-size: 1.6em; }
+.ear-panel.listening .ear-mic { animation: earPulse .9s ease-in-out infinite; }
+@keyframes earPulse { 50% { transform: scale(1.25); filter: drop-shadow(0 0 8px rgba(230,60,60,.7)); } }
+.ear-box .ear-line { line-height: 1.7; }
+.ew { display: inline-block; transition: color .2s, transform .2s; }
+.ew.ok { color: var(--ink); animation: ewPop .35s ease-out; }
+.ew.hid { color: rgba(43,29,18,.25); letter-spacing: 1px; }
+.ew.miss { color: #d63a2a; text-decoration: underline wavy rgba(214,58,42,.6); }
+@keyframes ewPop { from { transform: scale(1.35); color: #2f9e44; } }
+.ear-result { max-height: 40vh; overflow: auto; text-align: left; }

@@ -23,7 +23,7 @@ jobs:
         with:
           gradle-version: 8.11.1
 
-      - name: Download AI voice and speech engine
+      - name: Download AI voice, speech recognition and speech engine
         shell: bash
         run: |
           set -eo pipefail
@@ -45,6 +45,12 @@ jobs:
           cp -r $D/espeak-ng-data app/src/main/assets/tts/
           ls -la app/src/main/jniLibs/* app/src/main/assets/tts
           du -sh app/src/main/assets/tts
+          curl -fSL --retry 3 -o asr.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-fr-kroko-2025-08-06.tar.bz2"
+          mkdir -p asr && tar xjf asr.tar.bz2 -C asr
+          A=$(dirname $(find asr -name tokens.txt | head -1))
+          mkdir -p app/src/main/assets/asr
+          cp $A/encoder.onnx $A/decoder.onnx $A/joiner.onnx $A/tokens.txt app/src/main/assets/asr/
+          du -sh app/src/main/assets/asr
 
       - name: Build release APK
         shell: bash
