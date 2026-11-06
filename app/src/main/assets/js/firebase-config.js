@@ -7,5 +7,5 @@ window.FIREBASE_CONFIG = {
   projectId: 'afterschool-9244f',
   appId: '1:165205724449:web:cf52ffd7565eab77950260',
   // Authentication › Méthode de connexion › Google › « ID client Web » (pour la connexion Google sur Android)
-  googleWebClientId: ''
+  googleWebClientId: '165205724449-m1dc6p7opb7n3fssn8kn08jtt99fosar.apps.googleusercontent.com'
 };
