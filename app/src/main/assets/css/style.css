@@ -1292,3 +1292,10 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .home-lock { display: flex; justify-content: flex-start; }
 .home-lock .parent-lock { width: auto; height: auto; }
 @media (max-width: 760px), (orientation: portrait) { .home2 .home-main { grid-row: auto; } .home-lock { justify-content: center; } }
+/* compagnon : sa taille suit la hauteur de la scène, il est toujours entièrement visible */
+.pet, .theme-poney .pet { height: 72%; width: auto !important; max-width: 70%; aspect-ratio: 1; bottom: 8%; }
+.pet.stage-1, .theme-poney .pet.stage-1 { height: 60%; }
+.pet.stage-3, .theme-poney .pet.stage-3 { height: 82%; }
+.pet-body { position: relative; z-index: 1; }
+.dirt { z-index: 2; width: 16%; height: 12%; opacity: .9;
+  background: radial-gradient(circle at 40% 45%, #7a5230 0 38%, transparent 40%), radial-gradient(circle at 72% 62%, #6b4a2a 0 24%, transparent 26%), radial-gradient(circle at 25% 70%, #8a6038 0 18%, transparent 20%); }

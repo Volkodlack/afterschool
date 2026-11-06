@@ -260,7 +260,9 @@
       petEl.className = 'pet stage-' + stage(p) + ' ' + auraCls(p);
       showNeeds();
       w.querySelectorAll('.dirt').forEach(d => d.remove());
-      if (p.clean < 50) for (let i = 0; i < (p.clean < 25 ? 4 : 2); i++) { const d = el('<i class="dirt"></i>'); d.style.left = (30 + Math.random() * 40) + '%'; d.style.top = (40 + Math.random() * 35) + '%'; petEl.appendChild(d); }
+      // taches de boue posées sur le corps (pas à côté), au-dessus du dessin
+      const SPOTS = isPony() ? [[30, 50], [46, 55], [36, 63], [52, 47]] : [[28, 60], [56, 64], [40, 72], [62, 52]];
+      if (p.clean < 50) SPOTS.slice(0, p.clean < 25 ? 4 : 2).forEach(([x, y]) => { const d = el('<i class="dirt"></i>'); d.style.left = x + '%'; d.style.top = y + '%'; petEl.appendChild(d); });
       UI.refreshHud();
     };
     function showNeeds() {
