@@ -235,6 +235,7 @@
         <div class="pet stage-${stage(p)} ${auraCls(p)}"><div class="pet-body">${petMarkup(p, mood(p))}</div></div>
         <div class="pet-fx"></div>
       </div>
+      <div class="pet-say"><span class="pet-say-txt"></span></div>
       <div class="pet-bars">
         ${bar('hunger', 'Faim', p.hunger)}${bar('joy', 'Joie', p.joy)}${bar('clean', 'Propreté', p.clean)}
       </div>
@@ -245,7 +246,8 @@
         <button class="pix-btn small purple" data-a="shop">${Pixel.svg('chest')} Boutique</button>
       </div></div>`);
     const scene = w.querySelector('.pet-scene'), petEl = w.querySelector('.pet'), bubble = w.querySelector('.pet-bubble');
-    const say = (t, ms = 3600) => { bubble.textContent = t; bubble.classList.remove('show'); void bubble.offsetWidth; bubble.classList.add('show'); clearTimeout(bubble._t); bubble._t = setTimeout(() => bubble.classList.remove('show'), ms); };
+    const sayBox = w.querySelector('.pet-say'), sayTxt = w.querySelector('.pet-say-txt');
+    const say = (t) => { sayTxt.textContent = t; sayBox.classList.remove('show'); void sayBox.offsetWidth; sayBox.classList.add('show'); };
     const setMood = (m, ms) => {
       if (!isPony()) w.querySelector('.pet-body').innerHTML = petMarkup(p, m);
       petEl.dataset.mood = m;

@@ -185,10 +185,10 @@
       if (g === 'words') UI.go('list', { listId: latest && latest.id });
       else UI.go(g);
     });
-    const lockRow = el(`<div class="parent-lock-row center-col"><button class="pix-btn icon-btn wood parent-lock" aria-label="Espace parent">${Pixel.svg('lock')}</button></div>`);
+    const lockRow = el(`<div class="home-lock"><button class="pix-btn small wood parent-lock" aria-label="Espace parent">${Pixel.svg('lock')} Espace parent</button></div>`);
     const lock = lockRow.querySelector('button');
     lock.onclick = async () => { if (await UI.parentGate()) UI.go('parent'); };
-    page.querySelector('.home-main').appendChild(lockRow);
+    page.appendChild(lockRow);
   });
 
   SFX.enabled = Store.data.settings.sound !== false;

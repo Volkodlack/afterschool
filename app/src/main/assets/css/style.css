@@ -1276,3 +1276,19 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 /* thème poney : boutons OK / effacer assez contrastés */
 .theme-poney .key.ok { background: #46a85e; border-color: #2f8746; box-shadow: 0 4px 0 #2f8746; color: #fff; }
 .theme-poney .key.del { background: #e2577a; border-color: #b93b5c; box-shadow: 0 4px 0 #b93b5c; color: #fff; }
+/* compagnon : ce qu'il dit s'affiche sous la scène, jamais sur l'animal ; l'icône de besoin va en haut à gauche */
+.pet-bubble { display: none !important; }
+.thought { left: 5% !important; right: auto !important; top: 6% !important; }
+.thought::before { left: auto; right: -14px; } .thought::after { left: auto; right: -24px; }
+.pet-say { position: relative; background: #fff; border: 3px solid var(--ink); padding: .45em .8em; min-height: 2.6em; display: flex; align-items: center;
+  font-weight: 700; font-size: clamp(15px, 2.3vmin, 20px); line-height: 1.25; }
+.pet-say::before { content: ""; position: absolute; left: 50%; top: -11px; width: 16px; height: 16px; background: #fff; border-left: 3px solid var(--ink); border-top: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
+.pet-say.show .pet-say-txt { animation: sayIn .35s ease-out; }
+@keyframes sayIn { from { opacity: 0; transform: translateY(4px); } }
+.theme-poney .pet-say { border-color: #ffc2dc; border-radius: 18px; }
+.theme-poney .pet-say::before { border-color: #ffc2dc; }
+/* accueil : le cadenas parent sous le compagnon, à gauche */
+.home2 .home-main { grid-row: span 2; }
+.home-lock { display: flex; justify-content: flex-start; }
+.home-lock .parent-lock { width: auto; height: auto; }
+@media (max-width: 760px), (orientation: portrait) { .home2 .home-main { grid-row: auto; } .home-lock { justify-content: center; } }
