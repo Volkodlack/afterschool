@@ -195,7 +195,7 @@ h2.pix-title { font-size: clamp(22px, 4vmin, 40px); color: #fff; margin: .2em 0 
   box-shadow: 0 4px 0 rgba(43,29,18,.35); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; animation: pop .4s steps(4) both; }
 .chip .star { width: .8em; height: .8em; }
 .chip:active { transform: translateY(3px); }
-.list-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 34vmin, 340px), 1fr)); gap: var(--gap); }
+.list-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(260px, 40vmin, 420px), 1fr)); gap: var(--gap); }
 .list-card { cursor: pointer; animation: tileIn .45s steps(5) both; }
 .list-card .title { font-size: clamp(18px, 3vmin, 30px); font-weight: 700; }
 .progress { height: 18px; border: 3px solid var(--ink); background: #3b2a1c; margin-top: 10px; }
@@ -1167,3 +1167,112 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 .or-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; color: rgba(43,29,18,.6); font-size: clamp(13px, 1.9vmin, 17px); }
 .or-sep::before, .or-sep::after { content: ''; flex: 1; border-top: 2px dashed rgba(43,29,18,.25); }
 .g-ic { display: inline-flex; width: 1.4em; height: 1.4em; align-items: center; justify-content: center; border-radius: 50%; background: #fff; color: #4285f4; font-weight: 900; font-family: Arial, sans-serif; margin-right: .3em; }
+
+/* =====================================================================
+   SYSTÈME VISUEL v3 — lisibilité d'abord (téléphone, tablette, deux thèmes)
+   Règles : aucun texte sous 14 px, texte toujours sur un fond uni contrasté,
+   cibles tactiles de 44 px minimum, une seule action principale par écran.
+   ===================================================================== */
+
+/* --- titres et consignes : sur une étiquette pleine, jamais en blanc sur le décor --- */
+.prompt, h2.pix-title { display: block; width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto;
+  padding: .3em .8em; line-height: 1.25; text-wrap: balance; }
+.theme-pixel .prompt, .theme-pixel h2.pix-title { background: rgba(43,29,18,.82); border: 3px solid var(--ink); color: #fff; text-shadow: none;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.35); }
+.theme-poney .prompt, .theme-poney h2.pix-title, .theme-poney #screen-title { color: #5a3a4a; text-shadow: none; }
+.theme-poney .prompt, .theme-poney h2.pix-title { background: rgba(255,255,255,.94); border: 3px solid #ffc2dc; border-radius: 999px; box-shadow: 0 4px 0 rgba(224,138,176,.25); }
+h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
+.panel .prompt { background: none !important; border: none !important; box-shadow: none !important; color: var(--ink) !important; padding: 0; }
+
+/* --- barre du haut : fond plein, titre lisible et jamais coupé brutalement --- */
+#topbar { background: linear-gradient(180deg, rgba(43,29,18,.55), rgba(43,29,18,.18) 80%, transparent); }
+.theme-poney #topbar { background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.55) 80%, transparent); }
+#screen-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.1; overflow: hidden; }
+.theme-pixel #screen-title { text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+
+/* --- tailles minimales : plus de micro-textes --- */
+.tile .sub { font-size: max(14px, .52em); font-weight: 600; line-height: 1.2; }
+.theme-pixel .tile { text-shadow: 2px 2px 0 rgba(0,0,0,.6), -1px -1px 0 rgba(0,0,0,.35); }
+.theme-pixel .tile::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.32)); pointer-events: none; }
+.tile > * { position: relative; }
+.theme-poney .tile { color: #5a3a4a; }
+.theme-poney .tile .sub { color: #6b4a5a; }
+.pbar span, .tray-title, .pet-actions .pix-btn { font-size: max(14px, 1.9vmin); }
+.tray-item { font-size: max(13px, 1.6vmin); }
+.list-row .s { font-size: max(14px, .9em); white-space: normal; }
+.muted { opacity: .78; }
+.pix-btn.small { min-height: 44px; }
+.chip { min-height: 44px; }
+
+/* --- compagnon : bulle lisible, à gauche, l'icône de besoin reste à droite --- */
+.pet-bubble { left: 4%; right: auto; top: 5%; transform: scale(.6); transform-origin: 20% 100%; max-width: 56%;
+  font-size: clamp(15px, 2.3vmin, 20px); line-height: 1.25; padding: .5em .75em; text-align: left; box-shadow: 0 4px 0 rgba(43,29,18,.25); }
+.pet-bubble.show { transform: scale(1); }
+.pet-bubble::after { content: ""; position: absolute; left: 30%; bottom: -12px; width: 14px; height: 14px; background: #fff;
+  border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(45deg) skew(8deg, 8deg); }
+.theme-poney .pet-bubble::after { border-color: #ffc2dc; }
+.thought { left: auto; right: 6%; top: 8%; }
+.pet-name { line-height: 1.1; }
+
+/* --- espace parent : interface d'adulte, sobre et dense mais lisible --- */
+.parent-area .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.parent-area .tabs .pix-btn { flex-direction: column; gap: 4px; padding: .5em .3em; font-size: clamp(14px, 2.2vmin, 20px); min-height: 64px; }
+.parent-area .tabs .pix-btn svg { width: 1.5em; height: 1.5em; }
+.parent-area .panel { font-size: clamp(15px, 2.2vmin, 19px); }
+.parent-area .panel h2 { font-size: clamp(22px, 3.4vmin, 32px); }
+.parent-area .panel h3 { font-size: clamp(17px, 2.6vmin, 24px); margin: 1.2em 0 .4em; }
+.parent-area .field { padding: 14px 0; border-bottom: 2px solid rgba(43,29,18,.1); margin: 0; }
+.parent-area .field:last-of-type { border-bottom: none; }
+.parent-area .field > label { font-size: clamp(16px, 2.4vmin, 21px); }
+.parent-area .list-row { flex-wrap: wrap; row-gap: 8px; }
+.parent-area .list-row .grow { flex: 1 1 220px; }
+.parent-area .list-row .av { width: 48px !important; height: 48px !important; flex: none; }
+.parent-area .hud-chip .av, .parent-area .seg .av { width: 34px; height: 34px; display: inline-flex; }
+.parent-area .hud-chip .av img, .parent-area .hud-chip .av svg { width: 100%; height: 100%; object-fit: contain; }
+.parent-area .chips .chip { font-size: clamp(16px, 2.4vmin, 22px); }
+.theme-poney .parent-area .field { border-bottom-color: #ffe0ee; }
+
+/* --- mots de la semaine : actions en haut --- */
+.list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--gap); }
+.list-switch { display: flex; gap: 8px; overflow-x: auto; flex: 1 1 260px; padding: 4px 2px 8px; scrollbar-width: none; }
+.list-switch::-webkit-scrollbar { display: none; }
+.list-switch .pix-btn { white-space: nowrap; flex: none; }
+.adv-tile { width: 100%; flex-direction: row !important; gap: clamp(12px, 3vmin, 30px) !important; min-height: clamp(96px, 16vmin, 150px) !important; margin-bottom: var(--gap); justify-content: center; text-align: left !important; }
+.adv-tile .ic { width: clamp(52px, 10vmin, 96px) !important; height: clamp(52px, 10vmin, 96px) !important; flex: none; }
+.adv-tile .t1 { display: block; font-size: 1em; }
+.word-panel h3 { margin: 0; font-size: clamp(17px, 2.8vmin, 26px); }
+
+/* --- téléphones --- */
+@media (max-width: 600px) {
+  #hud-level, #hud-streak { display: none !important; }
+  .hud-chip { font-size: 14px; padding: 3px 8px; min-height: 34px; }
+  #hud { gap: 4px; }
+  #screen-title { font-size: 17px; }
+  .prompt { font-size: 17px; }
+  h2.pix-title { font-size: 21px; }
+  .parent-area .tabs .pix-btn { font-size: 13px; min-height: 58px; padding: .4em .1em; }
+  .parent-area .panel { padding: 14px; }
+  .pet-bubble { max-width: 62%; font-size: 14px; }
+  .adv-tile { font-size: 19px !important; }
+  .reader-tools { gap: 6px; }
+  .reader-tools .pix-btn.small { font-size: 14px; }
+}
+@media (max-width: 380px) {
+  .parent-area .tabs .pix-btn svg { display: none; }
+}
+.profile-chip { color: #fff; }
+.theme-poney .profile-chip { color: var(--ink); }
+/* jeux : le contenu se centre dans la hauteur quand il n'y a pas de clavier */
+#screen:not(.typing) > .game { justify-content: center; padding-bottom: 6vh; }
+/* lecture : outils secondaires repliés sur petit écran */
+.more-tools { display: contents; }
+.more-toggle { display: none !important; }
+@media (max-width: 900px) {
+  .more-toggle { display: inline-flex !important; }
+  .more-tools { display: none; }
+  .reader-tools.open .more-tools { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; order: 10; }
+  .reader-tools.open .more-toggle { --c: var(--grass); --hi: var(--grass-hi); --lo: var(--grass-lo); }
+}
+/* thème poney : boutons OK / effacer assez contrastés */
+.theme-poney .key.ok { background: #46a85e; border-color: #2f8746; box-shadow: 0 4px 0 #2f8746; color: #fff; }
+.theme-poney .key.del { background: #e2577a; border-color: #b93b5c; box-shadow: 0 4px 0 #b93b5c; color: #fff; }

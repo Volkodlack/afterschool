@@ -167,12 +167,15 @@
       <div class="reader-tools">
         <button class="pix-btn small gold" data-a="listen">${Pixel.svg('speaker')} Écouter</button>
         <button class="pix-btn small gold" data-a="echo">${Pixel.svg('mic')} Lis après moi</button>
+        <button class="pix-btn small more-toggle" data-a="more">⚙️ Aides</button>
+        <span class="more-tools">
         <button class="pix-btn small" data-a="speed" title="Vitesse">${Pixel.svg('turtle')}</button>
         <button class="pix-btn small ${help === 'syl' ? 'on' : ''}" data-a="syl">Syllabes</button>
         <button class="pix-btn small ${help === 'snd' ? 'on' : ''}" data-a="snd">Sons complexes</button>
         <button class="pix-btn small" data-a="ruler">${Pixel.svg('ruler')} Règle</button>
         <button class="pix-btn small" data-a="minus">A−</button>
         <button class="pix-btn small" data-a="plus">A+</button>
+        </span>
         <span class="spacer"></span>
         ${sheet.imageId ? `<button class="pix-btn small wood" data-a="photo">${Pixel.svg('image')} Fiche</button>` : ''}
         <button class="pix-btn small wood" data-a="hist">${Pixel.svg('trophy')} Mes essais</button>
@@ -444,6 +447,7 @@
     wrap.querySelector('[data-a=minus]').onclick = () => { settings.readerScale = Math.max(.6, settings.readerScale - .12); Store.save(); render(); };
     wrap.querySelector('[data-a=plus]').onclick = () => { settings.readerScale = Math.min(2.2, settings.readerScale + .12); Store.save(); render(); };
     wrap.querySelector('[data-a=hist]').onclick = showHistory;
+    wrap.querySelector('[data-a=more]').onclick = () => { wrap.querySelector('.reader-tools').classList.toggle('open'); };
     const aiB = wrap.querySelector('[data-a=ai]');
     if (aiB) aiB.onclick = () => { if (mode === 'reading' || mode === 'countdown') return; UI.go('readCheck', { sheetId: sheet.id }); };
     wrap.querySelector('[data-a=edit]').onclick = async () => { if (await UI.parentGate()) UI.go('sheetEdit', { sheetId: sheet.id }); };

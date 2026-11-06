@@ -553,29 +553,32 @@
     if (!l) return emptyLists(root);
     UI.setTitle(l.title);
     const pct = Math.round(Store.listMastery(l) * 100);
+    const lists = Store.lists();
     root.appendChild(el(html`
       <div class="center-col">
-        <div class="panel">
-          <div class="row"><h3 style="margin:0;font-size:clamp(18px,3vmin,28px)">Mes ${l.words.length} mots — touche un mot pour l'entendre</h3><span class="spacer"></span>
-            ${Store.lists().length > 1 ? '<button class="pix-btn small wood" data-a="all">Autres listes</button>' : ''}</div>
+        <div class="list-head">
+          <div class="list-switch">${lists.slice(0, 8).map(x => `<button class="pix-btn small ${x.id === l.id ? 'on' : ''}" data-l="${x.id}">${esc(x.title)}</button>`).join('')}</div>
+          <button class="pix-btn small gold" data-a="new">${Pixel.svg('plus')} Nouvelle liste</button>
+        </div>
+        <button class="tile adv-tile" data-a="adv" style="background-image:url(${Pixel.texture('gemme')})">
+          <span class="ic">${Pixel.svg('sword')}</span><span><span class="t1">Mon parcours</span><span class="sub">Chaque mot avec le jeu qui lui convient</span></span>
+        </button>
+        <div class="panel word-panel">
+          <h3>Mes ${l.words.length} mots <span class="muted" style="font-weight:500">· touche un mot pour l'entendre</span></h3>
           <div class="chips" style="margin-top:12px">${l.words.map((w, i) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${i * 0.04}s"><span>${FR.colorize(w)}</span>${masteryStars(w)}</span>`).join('')}</div>
           ${pathPanel(l.words)}
           <div class="progress"><div style="width:${pct}%"></div></div>
-          <div class="muted" style="margin-top:6px;font-size:clamp(14px,2.2vmin,20px)">Maîtrise : ${pct}%</div>
+          <div class="muted" style="margin-top:6px;font-size:clamp(15px,2.2vmin,20px)">Maîtrise : ${pct}%</div>
         </div>
-        <div style="height:var(--gap)"></div>
-        <button class="tile" data-a="adv" style="width:100%;min-height:clamp(110px,18vmin,170px);flex-direction:row;gap:3vmin;background-image:url(${Pixel.texture('gemme')})">
-          <span class="ic">${Pixel.svg('sword')}</span><span>MON PARCOURS<br><span class="sub">Chaque mot avec le jeu de son étape</span></span>
-        </button>
         <h2 class="pix-title">Mini-jeux</h2>
         <div class="games-grid">${Object.entries(GAMES).map(([k, g], i) => `
           <button class="tile game-tile" data-g="${k}" style="background-image:url(${Pixel.texture(g.tex)});animation-delay:${i * 0.06}s">
             <span class="ic">${Pixel.svg(g.icon)}</span><span>${g.name}</span><span class="sub">${g.desc}</span></button>`).join('')}
         </div>
       </div>`));
+    root.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { if (b.dataset.l !== l.id) UI.go('list', { listId: b.dataset.l }, { replace: true }); });
+    root.querySelector('[data-a=new]').onclick = async () => { if (await UI.parentGate()) UI.go('listEdit', {}); };
     root.querySelectorAll('.chip').forEach(c => c.onclick = () => UI.say(c.dataset.w));
-    const all = root.querySelector('[data-a=all]');
-    if (all) all.onclick = () => UI.go('lists');
     root.querySelector('[data-a=adv]').onclick = () => UI.go('session', { title: 'Aventure', mode: 'adventure', words: l.words });
     root.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
       const g = b.dataset.g;
@@ -599,8 +602,9 @@
     const lists = Store.lists();
     if (!lists.length) return emptyLists(root);
     UI.setTitle('Toutes mes listes');
-    const wrap = el('<div class="center-col"><div class="list-cards"></div></div>');
-    const cards = wrap.firstElementChild;
+    const wrap = el(`<div class="center-col"><div class="list-head"><span class="spacer"></span><button class="pix-btn small gold" data-a="new">${Pixel.svg('plus')} Nouvelle liste</button></div><div class="list-cards"></div></div>`);
+    const cards = wrap.querySelector('.list-cards');
+    wrap.querySelector('[data-a=new]').onclick = async () => { if (await UI.parentGate()) UI.go('listEdit', {}); };
     lists.forEach((l, i) => {
       const pct = Math.round(Store.listMastery(l) * 100);
       const c = el(html`<div class="panel list-card" style="animation-delay:${i * 0.05}s">

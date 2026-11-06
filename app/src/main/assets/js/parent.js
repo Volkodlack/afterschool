@@ -47,7 +47,7 @@
 
   UI.register('parent', (root) => {
     UI.setTitle('Espace parent');
-    const wrap = el(`<div class="center-col">
+    const wrap = el(`<div class="center-col parent-area">
       <div class="tabs">
         <button class="pix-btn" data-t="mots">${Pixel.svg('book')} Mots</button>
         <button class="pix-btn" data-t="lecture">${Pixel.svg('clock')} Lecture</button>
@@ -138,7 +138,7 @@
     const s = Store.data.settings;
     body.appendChild(el(html`<div><h2>Réglages</h2>
       <div class="field"><label>☁️ Compte et synchronisation</label><div data-z="cloud"></div></div>
-      <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
+      <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip profile-chip">${Avatar.html(s.avatar)} ${esc(s.name || "—")}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
       <div class="field"><label>Enfants</label><div data-z="kids"></div></div>
       <div class="field"><label>Thème de l'appli</label><div class="seg">${Theme.list.map(t => `<button class="pix-btn small ${Theme.id === t.id ? 'on' : ''}" data-theme="${t.id}">${t.name}</button>`).join('')}</div></div>
       <div class="field"><label>Code parent</label><div class="seg"><button class="pix-btn small wood" data-a="pin">${Pixel.svg('lock')} Changer le code</button></div></div>
