@@ -1,0 +1,17 @@
+{
+  "name": "After School",
+  "short_name": "After School",
+  "description": "Les devoirs en s'amusant : mots de la semaine, lecture, poésie.",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#5fb4f0",
+  "theme_color": "#5fb4f0",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

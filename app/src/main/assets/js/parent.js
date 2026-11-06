@@ -137,6 +137,7 @@
   function reglages(body) {
     const s = Store.data.settings;
     body.appendChild(el(html`<div><h2>Réglages</h2>
+      <div class="field"><label>☁️ Compte et synchronisation</label><div data-z="cloud"></div></div>
       <div class="field"><label>Profil de l'enfant</label><div class="seg"><span class="hud-chip" style="color:#fff">${Avatar.html(s.avatar)} ${esc(s.name || '—')}</span><button class="pix-btn small wood" data-a="profile">Changer le prénom ou l'image</button></div></div>
       <div class="field"><label>Enfants</label><div data-z="kids"></div></div>
       <div class="field"><label>Thème de l'appli</label><div class="seg">${Theme.list.map(t => `<button class="pix-btn small ${Theme.id === t.id ? 'on' : ''}" data-theme="${t.id}">${t.name}</button>`).join('')}</div></div>
@@ -172,6 +173,23 @@
       kz.querySelector('[data-a=addkid]').onclick = () => Store.createProfile();
     }
     drawKids();
+    const cz = body.querySelector('[data-z=cloud]');
+    function drawCloud() {
+      if (!cz.isConnected) { offCloud(); return; }
+      const u = Cloud.user;
+      cz.innerHTML = !Cloud.enabled ? `<p class="muted" style="margin:0;font-weight:400">La synchronisation n'est pas encore configurée dans cette version.</p>`
+        : u ? `<div class="list-row"><div class="grow"><div class="t">Connecté : ${esc(Cloud.state.email || '')}</div><div class="s">${esc(Cloud.statusText())}</div></div>
+            <button class="pix-btn small green" data-a="csync">Synchroniser</button><button class="pix-btn small red" data-a="cout">Se déconnecter</button></div>`
+        : `<div class="list-row"><div class="grow"><div class="t">Non connecté</div><div class="s">Connectez-vous pour retrouver les enfants sur tous vos appareils (Android, iPhone, iPad).</div></div>
+            <button class="pix-btn small gold" data-a="cin">Se connecter</button></div>`;
+      const a = cz.querySelector('[data-a=cin]'); if (a) a.onclick = () => Cloud.loginModal();
+      const b = cz.querySelector('[data-a=csync]'); if (b) b.onclick = () => Cloud.sync();
+      const c = cz.querySelector('[data-a=cout]'); if (c) c.onclick = async () => {
+        if (await UI.confirm('Se déconnecter ? Les données restent sur cet appareil, mais ne seront plus synchronisées.', 'Se déconnecter', 'Annuler')) await Cloud.signOut();
+      };
+    }
+    const offCloud = Cloud.onState(drawCloud);
+    drawCloud();
     const sz = body.querySelector('[data-z=sndc]');
     function drawSnd() {
       const map = s.sndColors || {};

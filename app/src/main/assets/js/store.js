@@ -62,10 +62,13 @@
   let saveTimer = null;
   function save(now) {
     clearTimeout(saveTimer);
-    const doit = () => { write(PKEY(global.current), data); syncSummary(); write(GKEY, global); };
+    const doit = () => { data._ts = Date.now(); write(PKEY(global.current), data); syncSummary(); write(GKEY, global); hook('save'); };
     if (now) doit(); else saveTimer = setTimeout(doit, 150);
   }
-  function saveGlobal() { write(GKEY, global); }
+  function saveGlobal() { global._ts = Date.now(); write(GKEY, global); hook('global'); }
+  /* hooks for the cloud sync (cloud.js) */
+  const hooks = [];
+  function hook(what, a, b) { hooks.forEach(f => { try { f(what, a, b); } catch (e) { console.warn(e); } }); }
 
   /* ---------- IndexedDB blobs ---------- */
   let dbp = null;
@@ -84,15 +87,28 @@
       return new Promise((res, rej) => {
         const tx = d.transaction('blobs', 'readwrite');
         tx.objectStore('blobs').put(value, id);
-        tx.oncomplete = () => res(id); tx.onerror = () => rej(tx.error);
+        tx.oncomplete = () => { res(id); if (!Blobs._quiet) hook('blobPut', id, value); }; tx.onerror = () => rej(tx.error);
       });
     },
     async get(id) {
       if (!id) return null;
       const d = await db();
-      return new Promise((res) => {
+      const v = await new Promise((res) => {
         const r = d.transaction('blobs').objectStore('blobs').get(id);
         r.onsuccess = () => res(r.result || null); r.onerror = () => res(null);
+      });
+      if (v == null && Blobs.remoteGet) {
+        // missing here: maybe it was added on another device
+        const rv = await Blobs.remoteGet(id).catch(() => null);
+        if (rv != null) { Blobs._quiet = true; try { await Blobs.put(id, rv); } finally { Blobs._quiet = false; } return rv; }
+      }
+      return v;
+    },
+    async keys() {
+      const d = await db();
+      return new Promise((res) => {
+        const r = d.transaction('blobs').objectStore('blobs').getAllKeys();
+        r.onsuccess = () => res(r.result || []); r.onerror = () => res([]);
       });
     },
     async del(id) {
@@ -101,7 +117,7 @@
       return new Promise((res) => {
         const tx = d.transaction('blobs', 'readwrite');
         tx.objectStore('blobs').delete(id);
-        tx.oncomplete = () => res(); tx.onerror = () => res();
+        tx.oncomplete = () => { res(); hook('blobDel', id); }; tx.onerror = () => res();
       });
     }
   };
@@ -110,6 +126,8 @@
 
   const Store = {
     data, save, uid, Blobs, global, saveGlobal,
+    onChange(f) { hooks.push(f); },
+    _io: { read, write, PKEY, GKEY },
 
     /* ----- children ----- */
     profiles() { return global.profiles.filter(p => p.onboarded); },
@@ -128,6 +146,7 @@
       try { localStorage.removeItem(PKEY(id)); } catch (e) {}
       global.profiles = global.profiles.filter(p => p.id !== id);
       saveGlobal();
+      hook('profileDel', id);
     },
 
     /* ----- word lists ----- */

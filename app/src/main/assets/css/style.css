@@ -1161,3 +1161,9 @@ body.dys .word-big { font-size: clamp(36px, 9vmin, 100px); }
 .snd-sw { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
 .snd-sw .sw { width: clamp(26px, 3.6vmin, 36px); height: clamp(26px, 3.6vmin, 36px); border: 3px solid rgba(43,29,18,.35); border-radius: 50%; padding: 0; cursor: pointer; }
 .snd-sw .sw.on { border-color: var(--ink); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); transform: scale(1.08); }
+
+/* ---------- compte / synchronisation ---------- */
+.cloud-row { margin-top: clamp(10px, 2vmin, 22px); }
+.or-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; color: rgba(43,29,18,.6); font-size: clamp(13px, 1.9vmin, 17px); }
+.or-sep::before, .or-sep::after { content: ''; flex: 1; border-top: 2px dashed rgba(43,29,18,.25); }
+.g-ic { display: inline-flex; width: 1.4em; height: 1.4em; align-items: center; justify-content: center; border-radius: 50%; background: #fff; color: #4285f4; font-weight: 900; font-family: Arial, sans-serif; margin-right: .3em; }

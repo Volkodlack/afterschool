@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>After School</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#5fb4f0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="After School">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 </head>
 <body>
 <div id="world-bg" aria-hidden="true">
@@ -43,6 +51,9 @@
 <script src="js/theme.js"></script>
 <script src="js/fr.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/vendor/firebase.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/cloud.js"></script>
 <script src="js/ear.js"></script>
 <script src="js/ink.js"></script>
 <script src="js/games.js"></script>
@@ -54,6 +65,10 @@
 <script src="js/cards.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/poem.js"></script>
+<script src="js/webocr.js"></script>
 <script src="js/app.js"></script>
+<script>
+  if (!window.AfterSchoolNative && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
 </body>
 </html>

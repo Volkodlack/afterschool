@@ -93,21 +93,28 @@
     available: !!N,
     take(onResult, onProcessing) {
       AS_native._photoCb = onResult; AS_native._processingCb = onProcessing;
-      if (N) N.takePhoto(); else this._browserPick(onResult, onProcessing);
+      if (N) N.takePhoto(); else this._browserPick(onResult, onProcessing, true);
     },
     pick(onResult, onProcessing) {
       AS_native._photoCb = onResult; AS_native._processingCb = onProcessing;
       if (N) N.pickPhoto(); else this._browserPick(onResult, onProcessing);
     },
-    _browserPick(onResult, onProcessing) {
+    _browserPick(onResult, onProcessing, camera) {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*';
+      if (camera) inp.setAttribute('capture', 'environment');
+      inp.style.display = 'none'; document.body.appendChild(inp);
       inp.onchange = () => {
-        const f = inp.files[0];
+        const f = inp.files[0]; inp.remove();
         if (!f) return AS_native.onPhoto(null);
         onProcessing && onProcessing();
         const r = new FileReader();
-        r.onload = () => AS_native.onPhoto({ text: '', image: r.result, ocrError: 'OCR indisponible dans le navigateur' });
+        r.onload = async () => {
+          if (!window.WebOCR) return AS_native.onPhoto({ text: '', image: r.result, ocrError: 'OCR indisponible dans le navigateur' });
+          const image = await WebOCR.shrink(r.result);
+          try { AS_native.onPhoto({ text: await WebOCR.read(image), image }); }
+          catch (e) { AS_native.onPhoto({ text: '', image, ocrError: 'Je n\'ai pas pu lire le texte : tapez-le ou corrigez-le à la main.' }); }
+        };
         r.readAsDataURL(f);
       };
       inp.click();

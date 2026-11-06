@@ -411,6 +411,11 @@ public class MainActivity extends ComponentActivity {
 
     private class Bridge {
         @JavascriptInterface
+        public void googleSignIn(String webClientId) {
+            runOnUiThread(() -> GoogleAuth.INSTANCE.signIn(MainActivity.this, webClientId == null ? "" : webClientId, code -> { js(code); return kotlin.Unit.INSTANCE; }));
+        }
+
+        @JavascriptInterface
         public boolean asrAvailable() {
             try { return asr().available(); } catch (Throwable t) { return false; }
         }

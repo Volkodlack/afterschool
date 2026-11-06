@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Construit la version web (iPad / iPhone / navigateur) dans web/_site à partir des fichiers de l'appli Android.
+set -euo pipefail
+cd "$(dirname "$0")"
+rm -rf _site
+cp -r ../app/src/main/assets _site
+rm -rf _site/tts _site/asr
+T=_site/vendor/tesseract
+mkdir -p $T/core $T/lang
+cp node_modules/tesseract.js/dist/tesseract.min.js node_modules/tesseract.js/dist/worker.min.js $T/
+cp node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js $T/core/
+cp node_modules/tesseract.js-core/tesseract-core-lstm.wasm node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm $T/core/ 2>/dev/null || true
+cp node_modules/@tesseract.js-data/fra/4.0.0_best_int/fra.traineddata.gz $T/lang/
+# service worker : version = commit, et liste des fichiers de l'appli à garder hors connexion (sauf Tesseract, chargé à la demande)
+VER=${GITHUB_SHA:-$(date +%s)}
+LIST=$(cd _site && find . -type f ! -path './vendor/tesseract/*' ! -name sw.js | sed 's#^\./##' | sort | awk '{printf "%s\"%s\"", (NR>1?",":""), $0}')
+sed -i "s#const VERSION = 'dev';#const VERSION = '${VER:0:12}';#; s#const PRECACHE = \[\];#const PRECACHE = [${LIST}];#" _site/sw.js
+touch _site/.nojekyll
+du -sh _site

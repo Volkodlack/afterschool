@@ -53,6 +53,15 @@
       if (b.dataset.p === Store.currentId()) UI.home(); else Store.switchProfile(b.dataset.p);
     });
     w.querySelector('[data-add]').onclick = async () => { if (await UI.parentGate()) Store.createProfile(); };
+    if (Cloud.enabled) {
+      const cb = el(`<div class="row center cloud-row"><button class="pix-btn small wood" data-a="cloud">☁️ ${Cloud.user ? 'Synchronisé' : 'Se connecter au compte famille'}</button></div>`);
+      w.appendChild(cb);
+      const off = Cloud.onState(() => { if (!cb.isConnected) return off(); cb.querySelector('button').innerHTML = '☁️ ' + (Cloud.state.status === 'syncing' ? 'Synchronisation…' : Cloud.user ? 'Synchronisé' : 'Se connecter au compte famille'); });
+      cb.querySelector('button').onclick = async () => {
+        if (Cloud.user) { Cloud.sync(); return; }
+        if (!Store.global.pin || await UI.parentGate()) Cloud.loginModal();
+      };
+    }
   });
 
 
@@ -127,8 +136,11 @@
         <div class="tiles theme-pick">
           <button class="tile theme-tile tt-pixel" data-t="pixel"><span class="ic">${Pixel.svg('mascot')}</span>Monde des blocs<span class="sub">Pixel art, blocs et créatures</span></button>
           <button class="tile theme-tile tt-poney" data-t="poney"><span class="ic">${Theme.previewSVG('poney')}</span>Centre équestre<span class="sub">Kawaii, poneys et chevaux</span></button>
-        </div></div>`);
+        </div>
+        ${Cloud.enabled && !edit && !themeOnly ? `<div class="row center cloud-row"><button class="pix-btn small wood" data-a="cloud">☁️ Déjà un compte After School ? Se connecter</button></div>` : ''}</div>`);
       root.appendChild(w);
+      const cbtn = w.querySelector('[data-a=cloud]');
+      if (cbtn) cbtn.onclick = () => Cloud.loginModal();
       w.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
         SFX.play('good');
         if (b.dataset.t === Theme.id) { st.theme = Theme.id; Store.save(true); if (themeOnly) UI.home(); else stepName(); }

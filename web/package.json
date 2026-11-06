@@ -1,0 +1,10 @@
+{
+  "name": "afterschool-web",
+  "private": true,
+  "description": "Dépendances de la version web (iPad / iPhone) : OCR des fiches",
+  "dependencies": {
+    "tesseract.js": "5.1.1",
+    "tesseract.js-core": "5.1.1",
+    "@tesseract.js-data/fra": "1.0.0"
+  }
+}

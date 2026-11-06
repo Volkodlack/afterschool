@@ -89,7 +89,44 @@
     return { lines: out, score: tot ? ok / tot : 0, reached };
   }
 
-  function listen({ onText, onState, onError } = {}) {
+  /* version web (iPad / iPhone / navigateur) : reconnaissance vocale du navigateur (Safari, Chrome) */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function webListen({ onText, onState, onError } = {}) {
+    let active = true, finals = '', interim = '', rec = null, ended = false, resolve;
+    const done = new Promise(r => resolve = r);
+    const text = () => (finals + ' ' + interim).replace(/\s+/g, ' ').trim();
+    const finish = () => { if (ended) return; ended = true; resolve({ text: text(), blob: null }); };
+    const begin = () => {
+      rec = new SR(); rec.lang = 'fr-FR'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+      rec.onstart = () => onState && onState('listening');
+      rec.onresult = e => {
+        interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) finals += ' ' + r[0].transcript; else interim += ' ' + r[0].transcript;
+        }
+        onText && onText(text());
+      };
+      rec.onerror = e => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') { active = false; onError && onError('mic'); finish(); }
+        else if (e.error === 'network') { active = false; onError && onError('network'); finish(); }
+      };
+      rec.onend = () => {
+        if (interim) { finals += ' ' + interim; interim = ''; }
+        if (active) { try { begin(); } catch (e) { finish(); } } else finish();
+      };
+      try { rec.start(); } catch (e) { active = false; onError && onError('start'); finish(); }
+    };
+    begin();
+    return {
+      stop() { active = false; try { rec && rec.stop(); } catch (e) {} setTimeout(finish, 1500); return done; },
+      cancel() { active = false; ended = true; try { rec && rec.abort(); } catch (e) {} }
+    };
+  }
+
+  function listen(opts = {}) {
+    if (!N && SR) return webListen(opts);
+    const { onText, onState, onError } = opts;
     const id = 'asr' + (++seq);
     const s = sessions[id] = { onText, onState, onError, text: '' };
     const done = new Promise(res => s.resolve = res);
@@ -101,7 +138,10 @@
   }
 
   window.Ear = {
-    available() { try { return !!(N && N.asrAvailable && N.asrAvailable()); } catch (e) { return false; } },
+    available() {
+      if (N) { try { return !!(N.asrAvailable && N.asrAvailable()); } catch (e) { return false; } }
+      return !!SR;
+    },
     listen, match, toks,
     /* hideFn(li, wi, w, nw) -> null (mot visible) ou texte du trou. Sans hideFn : tout est caché. */
     revealHTML(res, { showAll = false, hideFn = null } = {}) {
