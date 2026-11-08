@@ -233,7 +233,7 @@
     },
     addReward(gems, xp) {
       const before = this.level().lvl;
-      const stars = Math.max(1, Math.round(gems / 2));
+      const stars = gems > 0 ? Math.max(1, Math.round(gems / 2)) : 0;
       setTimeout(() => window.Pet && Pet.sync(), 50);
       data.stats.gems += gems; data.stats.xp += xp; data.stats.stars = (data.stats.stars || 0) + stars;
       this.markDay();

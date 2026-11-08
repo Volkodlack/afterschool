@@ -285,10 +285,11 @@
           <h2>${FR.esc(title)}</h2>
           <div class="result-stars">${[0, 1, 2].map(i => Pixel.svg('star', i < stars ? 'on' : '')).join('')}</div>
           <div class="row center" style="font-size:clamp(20px,3.6vmin,34px);font-weight:700">
-            <span class="row" style="gap:6px"><span style="width:1.4em;display:inline-block">${Pixel.svg('gem')}</span> +${gems}</span>
+            ${gems ? `<span class="row" style="gap:6px"><span style="width:1.4em;display:inline-block">${Pixel.svg('gem')}</span> +${gems}</span>
             <span class="row" style="gap:6px"><span style="width:1.3em;display:inline-block">${window.Pet ? Pet.starIcon() : ''}</span> +${reward.stars}</span>
-            <span style="width:30px"></span><span>+${xp} XP</span>
+            <span style="width:30px"></span>` : ''}<span>+${xp} XP</span>
           </div>
+          ${gems ? '' : `<p class="no-gems">${Pixel.svg('gem')} Les ${FR.esc(Theme.t.cur)} se gagnent dans « Mon parcours » !</p>`}
           ${lines.map(l => `<p style="font-size:clamp(16px,2.6vmin,24px);margin:.6em 0">${l}</p>`).join('')}
           <div class="row center" style="margin-top:2vmin">
             ${onAgain ? '<button class="pix-btn wood big" data-a="again">Rejouer</button>' : ''}

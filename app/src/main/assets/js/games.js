@@ -39,15 +39,24 @@
     const chars = [...target];
     document.getElementById('screen').classList.add('typing', 'full');
     const slots = el('<div class="slots"></div>');
-    let typed = [], locked = false, raw = null;
+    slots.style.setProperty('--n', chars.length);
+    let typed = [], locked = false, raw = null, mode = 'kbd', seg = 0;
     const editable = chars.map((c, i) => isSep(c) ? -1 : i).filter(i => i >= 0);
+    // les mots de l'expression (« la campagne » = 2 mots), en positions de lettres à écrire
+    const segs = [];
+    { let cur = null, ti = 0; chars.forEach(c => { if (c === ' ') { cur = null; return; } if (isSep(c)) return; if (!cur) { cur = { start: ti, len: 0 }; segs.push(cur); } cur.len++; ti++; }); }
+    const segRaw = [];
+    const multi = segs.length > 1;
     function render() {
       slots.innerHTML = '';
       let ti = 0;
+      const cs = segs[seg];
       chars.forEach((c, i) => {
         if (isSep(c)) { slots.appendChild(el(`<div class="slot ${c === ' ' ? 'space' : 'filled'}">${c === ' ' ? '' : esc(c)}</div>`)); return; }
         const v = typed[ti];
-        const s = el(`<div class="slot ${v ? 'filled' : ''} ${ti === typed.length ? 'cursor' : ''}">${v ? esc(v) : ''}</div>`);
+        const inSeg = mode === 'ink' && multi && cs && ti >= cs.start && ti < cs.start + cs.len;
+        const cursor = mode === 'ink' ? false : ti === typed.length;
+        const s = el(`<div class="slot ${v ? 'filled' : ''} ${cursor ? 'cursor' : ''} ${inSeg ? 'seg-cur' : ''}">${v ? esc(v) : ''}</div>`);
         s.dataset.ti = ti;
         slots.appendChild(s);
         ti++;
@@ -72,14 +81,31 @@
       let ti = 0;
       return chars.map(c => isSep(c) ? c : (typed[ti++] || '')).join('');
     }
-    /* texte reconnu (écriture à la main) -> cases */
+    /* texte reconnu (écriture à la main) -> cases du mot en cours */
     function setText(txt) {
+      const s = segs[seg] || { start: 0, len: editable.length };
       const t = FR.norm(txt || '');
       const letters = [...t].filter(c => !isSep(c) && c.trim());
-      typed = letters.slice(0, editable.length);
+      typed = typed.slice(0, s.start);
+      while (typed.length < s.start) typed.push('');
+      typed = typed.concat(letters.slice(0, s.len));
       // ce que l'enfant a vraiment écrit (même trop long ou trop court) est ce qui est évalué
-      raw = letters.length === editable.length ? null : t;
+      segRaw[seg] = letters.length === s.len ? null : t;
+      raw = null;
       render();
+    }
+    function inkAttempt() {
+      if (!segRaw.some(x => x != null) && typed.length >= editable.length && typed.every(Boolean)) return null;
+      return segs.map((s, i) => segRaw[i] != null ? segRaw[i] : typed.slice(s.start, s.start + s.len).join('')).join(' ');
+    }
+    let segLabel = null;
+    function drawSeg() {
+      if (!segLabel) return;
+      segLabel.style.display = mode === 'ink' && multi ? '' : 'none';
+      segLabel.innerHTML = `<span>✏️ Écris le mot <b>${seg + 1}</b> sur <b>${segs.length}</b>${seg < segs.length - 1 ? ', puis appuie sur OK' : ''}</span>`
+        + (seg > 0 ? `<button class="pix-btn small" data-a="prev">↩︎ Mot d'avant</button>` : '');
+      const pv = segLabel.querySelector('[data-a=prev]');
+      if (pv) pv.onclick = () => { seg--; if (pad) pad.clear(); render(); drawSeg(); };
     }
     area.appendChild(slots);
     /* ----- clavier ou écriture à la main ----- */
@@ -88,7 +114,7 @@
     const sw = Ink.supported() ? el(`<div class="input-switch"><button class="pix-btn small" data-m="kbd">⌨️ Clavier</button><button class="pix-btn small" data-m="ink">✏️ À la main</button></div>`) : null;
     async function readInk(strokes) {
       const n = ++recoN;
-      if (!strokes.length) { typed = []; raw = null; render(); return true; }
+      if (!strokes.length) { setText(''); segRaw[seg] = null; return true; }
       slots.classList.add('reading');
       const c = await Ink.recognize(strokes, pad.w, pad.h);
       if (n !== recoN) return false;
@@ -99,7 +125,7 @@
     }
     function setMode(m) {
       if (m === 'ink' && !Ink.supported()) m = 'kbd';
-      st.inputMode = m; Store.save();
+      st.inputMode = m; Store.save(); mode = m; seg = 0; segRaw.length = 0;
       if (sw) sw.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
       typed = []; raw = null; render();
       if (m === 'ink') {
@@ -110,9 +136,15 @@
             if (locked) return;
             if (!strokes.length) { UI.shake(slots); SFX.play('bad'); return; }
             clearTimeout(recoT);
-            if (await readInk(strokes)) submit();
+            if (!await readInk(strokes)) return;
+            // une expression s'écrit mot par mot
+            if (seg < segs.length - 1) { seg++; pad.clear(); SFX.play('pop'); render(); drawSeg(); return; }
+            raw = inkAttempt();
+            submit();
           }
         });
+        if (!segLabel) segLabel = el('<div class="ink-seg"></div>');
+        area.appendChild(segLabel); drawSeg();
         area.appendChild(pad.el);
         if (Ink.status() !== 'ready') {
           const t = UI.toast('✏️ Je prépare l\'écriture à la main…');
@@ -123,6 +155,7 @@
         }
       } else {
         if (pad) pad.el.remove();
+        if (segLabel) segLabel.remove();
         area.appendChild(kb);
       }
     }
@@ -145,7 +178,7 @@
       },
       keepCorrect() {
         raw = null;
-        if (pad) { pad.clear(); typed = []; render(); return; }
+        if (mode === 'ink') { pad.clear(); typed = []; seg = 0; segRaw.length = 0; render(); drawSeg(); return; }
         const lt = [...target.toLowerCase()];
         const kept = [];
         let ti = 0;
@@ -156,16 +189,18 @@
         }
         typed = kept; render();
       },
-      reset() { typed = []; raw = null; if (pad) pad.clear(); render(); },
+      reset() { typed = []; raw = null; seg = 0; segRaw.length = 0; if (pad) pad.clear(); render(); drawSeg(); },
       setFirst(ch) { if (!typed.length) { typed = [ch]; render(); } },
       /* reveal: keep the correct beginning, then add the next correct letter */
       hint() {
-        raw = null; if (pad) pad.clear();
+        raw = null; segRaw.length = 0; if (mode === 'ink') pad.clear();
         const lt = [...target.toLowerCase()].filter(c => !isSep(c));
         let k = 0;
         while (k < typed.length && typed[k] === lt[k]) k++;
         if (k >= lt.length) return false;
-        typed = lt.slice(0, k + 1); render();
+        typed = lt.slice(0, k + 1);
+        if (mode === 'ink') { seg = Math.max(0, segs.findIndex(x => k < x.start + x.len)); drawSeg(); }
+        render();
         const s = slots.querySelectorAll('.slot.filled:not(.space)');
         const last = [...slots.querySelectorAll('.slot')].filter(x => x.dataset.ti != null)[k];
         if (last) { last.classList.add('hinted'); setTimeout(() => last.classList.remove('hinted'), 900); }
@@ -409,7 +444,8 @@
     function finish() {
       const ratio = firstTry / rounds.length;
       const stars = ratio >= .9 ? 3 : ratio >= .6 ? 2 : 1;
-      const gems = results.reduce((a, r) => a + (r.errors === 0 ? 3 : 1), 0);
+      // la monnaie se gagne seulement dans « Mon parcours » (et la révision), pas dans les mini-jeux
+      const gems = cfg.paid ? results.reduce((a, r) => a + (r.errors === 0 ? 3 : 1), 0) : 0;
       const xp = rounds.length * 10 + firstTry * 5;
       const hard = results.filter(r => r.errors > 0).map(r => `<b style="font-family:Lecture">${esc(r.word)}</b>`);
       UI.results({
@@ -501,7 +537,7 @@
       const stars = won ? (missesWrong === 0 ? 3 : missesWrong === 1 ? 2 : 1) : (caught >= 6 ? 1 : 0);
       UI.results({
         title: won ? 'Tous attrapés !' : 'Plus de cœurs !',
-        stars, gems: Math.max(1, caught), xp: caught * 5 + (won ? 20 : 0),
+        stars, gems: 0, xp: caught * 5 + (won ? 20 : 0),
         lines: [`Tu as attrapé ${caught} bon${caught > 1 ? 's' : ''} mot${caught > 1 ? 's' : ''} !`],
         onAgain: () => UI.go('rain', { title, words }, { replace: true }),
         onDone: () => UI.back()
@@ -530,8 +566,8 @@
     if (p.mode === 'adventure') rounds = adventureRounds(p.words);
     else if (p.mode === 'revision') rounds = adventureRounds(p.words);
     else rounds = buildRounds(p.words, p.game);
-    if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
-    return runSession(root, { title: p.title, rounds, again });
+    if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, paid: true, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
+    return runSession(root, { title: p.title, rounds, again, paid: p.mode === 'adventure' });
   });
 
   /* ---------- screens: word lists ---------- */

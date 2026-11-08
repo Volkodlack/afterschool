@@ -1299,3 +1299,50 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .pet-body { position: relative; z-index: 1; }
 .dirt { z-index: 2; width: 16%; height: 12%; opacity: .9;
   background: radial-gradient(circle at 40% 45%, #7a5230 0 38%, transparent 40%), radial-gradient(circle at 72% 62%, #6b4a2a 0 24%, transparent 26%), radial-gradient(circle at 25% 70%, #8a6038 0 18%, transparent 20%); }
+/* mots en plusieurs morceaux (« la campagne », « ils vont ») : l'espace est une case visible */
+.slot.space { width: clamp(22px, 3.4vmin, 40px) !important; display: flex; align-items: flex-end; justify-content: center; padding-bottom: .35em; }
+.slot.space::after { content: ""; width: 60%; height: 4px; border-radius: 2px; background: rgba(43,29,18,.28); }
+.theme-poney .slot.space::after { background: #e0a0c4; }
+.word-big .lt { white-space: pre; }
+.no-gems { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: clamp(15px, 2.3vmin, 20px); font-weight: 700; opacity: .85; margin: .4em 0; }
+.no-gems svg { width: 1.3em; height: 1.3em; }
+
+/* écriture à la main mot par mot */
+.ink-seg { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; font-weight: 700; font-size: clamp(15px, 2.4vh, 22px);
+  background: #fff8d6; border: 3px solid var(--ink); padding: .25em .8em; }
+.theme-poney .ink-seg { border-color: #ffc2dc; border-radius: 999px; background: #fffbe6; }
+.slot.seg-cur { box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px rgba(245,197,66,.35); }
+.slot.seg-cur:not(.filled) { background: #fff6c8; }
+
+/* écrans d'écriture : tout tient dans la hauteur de l'écran, le clavier / la zone d'écriture en bas */
+#screen.typing { display: flex; flex-direction: column; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+#screen.typing > .game { flex: 1 1 auto; min-height: 0 !important; height: 100%; justify-content: flex-start; padding-bottom: 0; }
+#screen.typing .game-area { flex: 1 1 auto; min-height: 0 !important; }
+#screen.typing .kbd { margin-top: auto; flex: 0 0 auto; }
+#screen.typing .ink-pad { margin-top: auto; flex: 1 1 auto; min-height: 0; max-height: 420px; }
+#screen.typing .ink-wrap { flex: 1 1 auto; height: auto; min-height: 90px; }
+#screen.typing .prompt { padding: .2em .7em; }
+#screen.typing .word-big { padding: 0 .4em; }
+#screen.typing .pix-btn:not(.small):not(.big) { padding: .4em .9em; }
+/* les cases tiennent sur une seule ligne, quelle que soit la longueur */
+#screen.typing .slots { flex-wrap: nowrap; width: 100%; gap: clamp(2px, .8vmin, 8px); }
+#screen.typing .slot { width: min(clamp(32px, 6vh, 80px), calc((100vw - 40px) / var(--n, 8) - 6px)); height: auto; aspect-ratio: .82; flex: 0 1 auto;
+  font-size: min(clamp(24px, 5vh, 60px), calc((100vw - 40px) / var(--n, 8) * .62)); border-width: 3px; }
+#screen.typing .slot.space { width: min(clamp(18px, 3vh, 34px), calc((100vw - 40px) / var(--n, 8) * .6)) !important; aspect-ratio: auto; align-self: stretch; }
+/* le mot (souvent caché) reste compact pendant l'écriture */
+#screen.typing .word-big { font-size: clamp(24px, 6vh, 72px); white-space: nowrap; max-width: 100%; overflow: hidden; }
+#screen.typing .word-big.covered { min-height: 1.2em; }
+/* téléphone couché : deux colonnes, consignes à gauche, clavier / zone d'écriture à droite */
+@media (max-height: 520px) and (orientation: landscape) {
+  #screen.typing .game-top { display: none; }
+  #screen.typing .game-area { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: 12px; row-gap: 6px; align-content: center; align-items: center; justify-items: center; }
+  #screen.typing .game-area > * { grid-column: 1; }
+  #screen.typing .game-area > .kbd, #screen.typing .game-area > .ink-pad { grid-column: 2; grid-row: 1 / span 12; align-self: stretch; margin: 0; max-height: none; }
+  #screen.typing .game-area > .kbd { justify-content: center; }
+  #screen.typing .kbd .key { height: clamp(28px, 10vh, 46px); font-size: clamp(14px, 5vh, 22px); }
+  #screen.typing .slot { width: min(36px, calc((48vw - 30px) / var(--n, 8) - 4px)); font-size: min(26px, calc((48vw - 30px) / var(--n, 8) * .62)); }
+  #screen.typing .word-big { font-size: clamp(20px, 8vh, 40px); }
+  #screen.typing .prompt { font-size: 15px; }
+  #screen.typing .pix-btn { font-size: 14px; }
+  #screen.typing .ink-wrap { min-height: 0; }
+}

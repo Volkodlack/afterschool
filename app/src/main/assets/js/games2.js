@@ -30,7 +30,7 @@
     area.innerHTML = '';
     const light = el(`<div class="traffic"><i class="g on"></i><i class="o"></i><i class="r"></i></div>`);
     const prompt = el('<div class="prompt">Feu vert : regarde bien le mot !</div>');
-    const big = el(`<div class="word-big">${[...word].map(c => `<span class="lt">${esc(c)}</span>`).join('')}</div>`);
+    const big = el(`<div class="word-big">${[...word].map(c => `<span class="lt">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('')}</div>`);
     const row = el('<div class="row center"></div>');
     area.append(light, prompt, big, row);
     const setLight = c => light.querySelectorAll('i').forEach(i => i.classList.toggle('on', i.classList.contains(c)));
@@ -200,7 +200,7 @@
     function finish() {
       const perfect = ws.length, ratio = perfect / tries;
       const stars = ratio > .8 ? 3 : ratio > .5 ? 2 : 1;
-      UI.results({ title: 'Toutes les paires !', stars, gems: ws.length * 2 + stars * 2, xp: ws.length * 8, lines: [`${tries} essais pour ${ws.length} paires`],
+      UI.results({ title: 'Toutes les paires !', stars, gems: 0, xp: ws.length * 8, lines: [`${tries} essais pour ${ws.length} paires`],
         onAgain: () => UI.go('memory', { title, words }, { replace: true }), onDone: () => UI.back() });
     }
   });
@@ -269,7 +269,7 @@
     gridEl.addEventListener('pointerup', end); gridEl.addEventListener('pointercancel', end);
     function finish() {
       const stars = misses === 0 ? 3 : misses < 3 ? 2 : 1;
-      setTimeout(() => UI.results({ title: 'Tous trouvés !', stars, gems: placed.length * 2 + stars * 2, xp: placed.length * 8, lines: [`${placed.length} mots trouvés`],
+      setTimeout(() => UI.results({ title: 'Tous trouvés !', stars, gems: 0, xp: placed.length * 8, lines: [`${placed.length} mots trouvés`],
         onAgain: () => UI.go('motsmeles', { title, words }, { replace: true }), onDone: () => UI.back() }), 600);
     }
   });
