@@ -57,6 +57,7 @@ jobs:
         run: |
           set -o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          export ASSETS_BUILD=$(git log -1 --format=%ct)
           gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee -a build.log
 
       - name: Publish release

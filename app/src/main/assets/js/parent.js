@@ -154,6 +154,7 @@
         <p class="muted" style="margin:6px 0 0;font-weight:400;font-size:clamp(13px,1.9vmin,17px)">Le compagnon prévient quand il a faim, est sale ou s'ennuie (entre 8 h et 20 h, au plus une fois toutes les 3 heures), et rappelle les devoirs en fin de journée. Pour le widget : appui long sur l'écran d'accueil de la tablette › Widgets › After School.</p></div>
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
+      ${window.AppUpdate && AppUpdate.available ? `<div class="field"><label>Mises à jour</label><div class="seg" style="align-items:center"><span data-z="ver" style="font-weight:400"></span><button class="pix-btn small gold" data-a="upd">Rechercher une mise à jour</button></div></div>` : ''}
       <div class="field"><label>Code bonus</label><div class="seg bonus-row"><input data-f="bonus" inputmode="numeric" autocomplete="off" placeholder="Entrez un code" style="max-width:260px"><button class="pix-btn small gold" data-a="bonus">Valider</button></div></div>
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p></div>`));
@@ -248,6 +249,12 @@
       body.querySelectorAll('[data-n]').forEach(x => x.classList.toggle('on', x === b));
     });
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
+    const upd = body.querySelector('[data-a=upd]');
+    if (upd) {
+      const i = AppUpdate.info();
+      if (i) body.querySelector('[data-z=ver]').textContent = `Version ${i.apk} · contenu du ${new Date(i.assets * 1000).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${i.ota ? ' (mis à jour automatiquement)' : ''}`;
+      upd.onclick = () => AppUpdate.check();
+    }
     /* code bonus : on ne garde que l'empreinte du code dans l'appli (le dépôt est public) */
     const BONUS = { '71ca124fe16bacb57c8cdb1e120d5cf80c2d207258a3a2c03e3673521b76304e': 1000 };
     body.querySelector('[data-a=bonus]').onclick = async () => {

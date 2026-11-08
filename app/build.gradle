@@ -4,6 +4,7 @@ plugins {
 }
 
 def runNumber = Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
+def assetsBuild = Long.parseLong(System.getenv("ASSETS_BUILD") ?: "0")
 
 android {
     namespace 'fr.afterschool.app'
@@ -16,7 +17,9 @@ android {
         versionCode runNumber
         versionName "1.0." + runNumber
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
+        buildConfigField "long", "ASSETS_BUILD", "${assetsBuild}L"
     }
+    buildFeatures { buildConfig true }
 
     signingConfigs {
         release {

@@ -79,6 +79,7 @@ public class MainActivity extends ComponentActivity {
     private PermissionRequest pendingPermission;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private InkReader ink;
+    private Updater updater;
     private AsrEngine asr;
     private String pendingAsr;
     private AsrEngine asr() { if (asr == null) asr = new AsrEngine(this, code -> { js(code); return kotlin.Unit.INSTANCE; }); return asr; }
@@ -129,8 +130,10 @@ public class MainActivity extends ComponentActivity {
         notifPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {});
         PetWorker.schedule(this);
 
+        updater = new Updater(this, code -> { js(code); return kotlin.Unit.INSTANCE; });
+        updater.selectAtStartup();
         final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
-                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .addPathHandler("/assets/", updater.pathHandler(new WebViewAssetLoader.AssetsPathHandler(this)))
                 .build();
 
         if (Build.VERSION.SDK_INT >= 28) {
@@ -198,6 +201,8 @@ public class MainActivity extends ComponentActivity {
 
         web.addJavascriptInterface(new Bridge(), "AfterSchoolNative");
         web.loadUrl(START_URL);
+        // mise à jour automatique du contenu, en arrière-plan, quelques secondes après le lancement
+        new Thread(() -> { try { Thread.sleep(4000); } catch (InterruptedException ignored) {} updater.check(false); }).start();
 
         neural = new NeuralTts(this, new NeuralTts.Listener() {
             @Override
@@ -410,6 +415,21 @@ public class MainActivity extends ComponentActivity {
     }
 
     private class Bridge {
+        @JavascriptInterface
+        public String updateInfo() { return updater.info(); }
+
+        @JavascriptInterface
+        public void updateConfirm() { updater.confirmOk(); }
+
+        @JavascriptInterface
+        public void updateCheck() { new Thread(() -> updater.check(true)).start(); }
+
+        @JavascriptInterface
+        public void apkInstall() { new Thread(() -> updater.downloadAndInstall(MainActivity.this)).start(); }
+
+        @JavascriptInterface
+        public void reloadApp() { runOnUiThread(() -> { updater.selectAtStartup(); web.loadUrl(START_URL); }); }
+
         @JavascriptInterface
         public void googleSignIn(String webClientId) {
             runOnUiThread(() -> GoogleAuth.INSTANCE.signIn(MainActivity.this, webClientId == null ? "" : webClientId, code -> { js(code); return kotlin.Unit.INSTANCE; }));

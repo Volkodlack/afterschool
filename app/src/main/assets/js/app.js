@@ -202,6 +202,8 @@
   else if (!Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
   else if (picked) UI.go('home');
   else UI.go('profiles');
+  // l'appli a bien démarré : la mise à jour du contenu est validée
+  setTimeout(() => window.AppUpdate && AppUpdate.confirm(), 2500);
   // widget & notifications: first sync, and ask once for the notification permission
   setTimeout(() => {
     if (window.Pet) Pet.sync();
