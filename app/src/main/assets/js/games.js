@@ -442,6 +442,9 @@
       }, root);
     }
     function finish() {
+      // quêtes : le parcours est lancé, et les étapes des mots ont peut-être avancé
+      let quest = [];
+      if (window.Quests) { if (cfg.listId) Quests.markStarted(cfg.listId); quest = Quests.check(); }
       const ratio = firstTry / rounds.length;
       const stars = ratio >= .9 ? 3 : ratio >= .6 ? 2 : 1;
       // la monnaie se gagne seulement dans « Mon parcours » (et la révision), pas dans les mini-jeux
@@ -453,6 +456,7 @@
         stars, gems, xp,
         lines: [`${firstTry} mot${firstTry > 1 ? 's' : ''} sur ${rounds.length} réussi${firstTry > 1 ? 's' : ''} du premier coup`]
           .concat(hard.length ? ['À revoir : ' + hard.join(', ')] : [])
+          .concat(window.Quests && Quests.pendingCount && Quests.pendingCount() ? ['🏆 <b>Nouvelle carte de quête à découvrir !</b>'] : [])
           .concat(promos.length ? [promos.map(pr => `<span class="promo">${Store.STAGES[pr.to].icon} <b style="font-family:Lecture">${esc(pr.word)}</b> passe en <b>${Store.STAGES[pr.to].name}</b> !</span>`).join('<br>')] : []),
         onAgain: cfg.again,
         onDone: () => UI.back()
@@ -567,7 +571,7 @@
     else if (p.mode === 'revision') rounds = adventureRounds(p.words);
     else rounds = buildRounds(p.words, p.game);
     if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, paid: true, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
-    return runSession(root, { title: p.title, rounds, again, paid: p.mode === 'adventure' });
+    return runSession(root, { title: p.title, rounds, again, paid: p.mode === 'adventure', listId: p.mode === 'adventure' ? p.listId : null });
   });
 
   /* ---------- screens: word lists ---------- */
@@ -596,6 +600,7 @@
           <div class="list-switch">${lists.slice(0, 8).map(x => `<button class="pix-btn small ${x.id === l.id ? 'on' : ''}" data-l="${x.id}">${esc(x.title)}</button>`).join('')}</div>
           <button class="pix-btn small gold" data-a="new">${Pixel.svg('plus')} Nouvelle liste</button>
         </div>
+        <div data-z="quest"></div>
         <button class="tile adv-tile" data-a="adv" style="background-image:url(${Pixel.texture('gemme')})">
           <span class="ic">${Pixel.svg('sword')}</span><span><span class="t1">Mon parcours</span><span class="sub">Chaque mot avec le jeu qui lui convient</span></span>
         </button>
@@ -612,10 +617,11 @@
             <span class="ic">${Pixel.svg(g.icon)}</span><span>${g.name}</span><span class="sub">${g.desc}</span></button>`).join('')}
         </div>
       </div>`));
+    if (window.Quests) { root.querySelector('[data-z=quest]').replaceWith(Quests.panel(l)); setTimeout(() => Quests.flush(), 450); }
     root.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { if (b.dataset.l !== l.id) UI.go('list', { listId: b.dataset.l }, { replace: true }); });
     root.querySelector('[data-a=new]').onclick = async () => { if (await UI.parentGate()) UI.go('listEdit', {}); };
     root.querySelectorAll('.chip').forEach(c => c.onclick = () => UI.say(c.dataset.w));
-    root.querySelector('[data-a=adv]').onclick = () => UI.go('session', { title: 'Aventure', mode: 'adventure', words: l.words });
+    root.querySelector('[data-a=adv]').onclick = () => UI.go('session', { title: 'Aventure', mode: 'adventure', words: l.words, listId: l.id });
     root.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
       const g = b.dataset.g;
       if (g === 'pluie') UI.go('rain', { title: 'Pluie de mots', words: l.words });

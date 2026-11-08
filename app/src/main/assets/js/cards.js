@@ -299,7 +299,7 @@
     const gems = Store.data.stats.gems;
     const price = cost();
     const n = opened();
-    const SET = SETS[curSet];
+    const SET = SETS[curSet] || SETS[1];
     const ownIn = k => CARDS.filter(c => c.set === k && st.owned[c.id]).length;
     const wrap = el(html`<div class="center-col">
       <div class="booster-bar panel">
@@ -314,8 +314,9 @@
       ${gems < price ? `<p class="prompt">Encore ${price - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
       <div class="tabs set-tabs" style="margin-top:var(--gap)">
         ${[1, 2].map(k => `<button class="pix-btn ${curSet === k ? 'on' : ''}" data-set="${k}">${SETS[k].name} <small>${ownIn(k)}/100</small></button>`).join('')}
+        ${window.Quests ? `<button class="pix-btn ${curSet === 'q' ? 'on' : ''} quest-tab" data-set="q">🏆 Quêtes <small>${Quests.ownedCount()}/${Quests.QCARDS.length}</small></button>` : ''}
       </div>
-      <div class="tabs">
+      <div class="tabs" ${curSet === 'q' ? 'style="display:none"' : ''}>
         <button class="pix-btn small ${filter === 'all' ? 'on' : ''}" data-f="all">Toutes</button>
         ${Object.entries(SET.EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}"><span style="width:1.1em;display:inline-flex">${SET.icon(k)}</span>${e.name}</button>`).join('')}
         <button class="pix-btn small ${filter === 'or' ? 'on' : ''}" data-f="or">♛ Dorées</button>
@@ -323,7 +324,8 @@
       <div class="album"></div></div>`);
     root.appendChild(wrap);
     const album = wrap.querySelector('.album');
-    const list = CARDS.filter(c => c.set === curSet && (filter === 'all' || c.el === filter || (filter === 'or' && c.rar === 'or')));
+    if (curSet === 'q') { album.replaceWith(el('<div data-z="qalbum"></div>')); Quests.album(wrap.querySelector('[data-z=qalbum]')); }
+    const list = curSet === 'q' ? [] : CARDS.filter(c => c.set === curSet && (filter === 'all' || c.el === filter || (filter === 'or' && c.rar === 'or')));
     album.innerHTML = list.map(c => st.owned[c.id] ? cardHTML(c, { count: st.owned[c.id] }) : missingHTML(c)).join('');
     album.querySelectorAll('.tcard').forEach((nd, i) => {
       nd.style.animationDelay = Math.min(i * 0.02, .8) + 's';
@@ -333,7 +335,7 @@
         zoom(c);
       };
     });
-    wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
+    wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = b.dataset.set === 'q' ? 'q' : +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
     wrap.querySelector('[data-a=open]').onclick = async () => {
       if (Store.data.stats.gems < cost()) { UI.toast(`Il te faut ${cost()} ${Theme.t.cur}`); return; }

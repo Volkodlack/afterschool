@@ -179,6 +179,7 @@
     </div>`);
     root.appendChild(page);
     page.querySelector('.home-pet').appendChild(Pet.widget());
+    if (window.Quests) { Quests.check(); setTimeout(() => Quests.flush(), 700); }
     root.querySelectorAll('.tile').forEach((t, i) => t.style.animationDelay = (0.1 + i * 0.1) + 's');
     root.querySelectorAll('[data-go]').forEach(t => t.onclick = () => {
       const g = t.dataset.go;

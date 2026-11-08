@@ -1346,3 +1346,72 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
   #screen.typing .pix-btn { font-size: 14px; }
   #screen.typing .ink-wrap { min-height: 0; }
 }
+
+/* =====================  CARTES DE QUÊTE « FULL ART »  ===================== */
+.tcard.fa .tc-in { padding: 0; gap: 0; background: #222; border: 3px solid #1a1a1a; box-shadow: 0 5px 0 rgba(43,29,18,.4); border-radius: 4.5cqw; }
+.fa-scene { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; }
+.fa-hero { position: absolute !important; left: 50%; bottom: 25%; width: 86%; transform: translateX(-50%); z-index: 1; image-rendering: pixelated;
+  filter: drop-shadow(0 2cqw 0 rgba(0,0,0,.25)) drop-shadow(0 0 3cqw rgba(255,255,255,.35)); }
+.theme-poney .fa-hero { image-rendering: auto; width: 92%; bottom: 23%; }
+.fa-top { position: absolute !important; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 2cqw; padding: 4cqw 5cqw 6cqw;
+  background: linear-gradient(180deg, rgba(0,0,0,.55), transparent); z-index: 2; }
+.fa-name { flex: 1; color: #fff; font-weight: 800; font-size: 9cqw; line-height: 1.05; text-shadow: 0 .5cqw 0 rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fa-step { font-size: 9cqw; filter: drop-shadow(0 .6cqw 0 rgba(0,0,0,.4)); }
+.fa-bottom { position: absolute !important; left: 0; right: 0; bottom: 0; padding: 8cqw 5cqw 4cqw; background: linear-gradient(0deg, rgba(0,0,0,.72) 55%, transparent); color: #fff; z-index: 2; }
+.fa-chap { font-weight: 800; font-size: 5.6cqw; color: #ffe58a; text-shadow: 0 .4cqw 0 rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fa-txt { font-family: "Lecture"; font-size: 5.2cqw; line-height: 1.2; margin-top: 1cqw; }
+.fa-meta { font-size: 4.4cqw; opacity: .85; margin-top: 1.4cqw; font-weight: 700; }
+.fa-foil { position: absolute !important; inset: 0; z-index: 3 !important; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,.55) 46%, transparent 60%); background-size: 250% 250%; mix-blend-mode: overlay; animation: faShine 4.5s ease-in-out infinite; }
+@keyframes faShine { 0% { background-position: 120% 0; } 60%, 100% { background-position: -40% 0; } }
+/* cadres selon l'étape */
+.tcard.fa-s0 .tc-in { border-color: #d9dde6; box-shadow: inset 0 0 0 1.6cqw #d9dde6, 0 5px 0 rgba(43,29,18,.4); }
+.tcard.fa-s1 .tc-in { border-color: #9fd8ff; box-shadow: inset 0 0 0 1.6cqw #9fd8ff, 0 5px 0 rgba(43,29,18,.4); }
+.tcard.fa-s2 .tc-in { border: 0; box-shadow: 0 5px 0 rgba(43,29,18,.4); }
+.tcard.fa-s2 .tc-in::before, .tcard.fa-s3 .tc-in::before { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit; padding: 1.8cqw;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.tcard.fa-s2 .tc-in::before { background: linear-gradient(135deg, #ff8fb1, #f5c542, #8fdc5c, #7ec8f5, #c48bf0, #ff8fb1); background-size: 300% 300%; animation: holo 5s linear infinite; }
+.tcard.fa-s2 .fa-foil { background: linear-gradient(125deg, rgba(255,143,177,.0) 20%, rgba(255,143,177,.35) 35%, rgba(126,200,245,.35) 50%, rgba(143,220,92,.3) 62%, rgba(255,255,255,0) 75%); background-size: 300% 300%; mix-blend-mode: color-dodge; opacity: .7; }
+.tcard.fa-s3 .tc-in { border: 0; box-shadow: 0 5px 0 rgba(43,29,18,.4), 0 0 18px rgba(245,197,66,.85); }
+.tcard.fa-s3 .tc-in::before { background: linear-gradient(135deg, #8a5a10, #f5c542 20%, #fff2a8 35%, #c8921c 50%, #ffe58a 65%, #b37a12 80%, #f5c542); background-size: 250% 250%; animation: holo 4s linear infinite; }
+.tcard.fa-s3 .fa-foil { background: linear-gradient(115deg, transparent 25%, rgba(255,240,170,.75) 45%, transparent 62%); background-size: 250% 250%; mix-blend-mode: screen; opacity: .55; }
+.tcard.fa-s3 .fa-chap { color: #fff2a8; }
+.tcard.fa-s3::before { content: "✦"; position: absolute; z-index: 5; top: -5%; right: 8%; font-size: 14cqw; color: #fff8b0; text-shadow: 0 0 6px #f5c542; animation: twinkle 1.4s steps(3) infinite; }
+.tcard.fa .tc-in > img, .tcard.fa .tc-in > div { z-index: auto; }
+/* cartes pas encore gagnées */
+.tcard.fa-lock .tc-in { background: rgba(43,29,18,.32); border: 3px dashed rgba(255,255,255,.75); box-shadow: none; align-items: center; justify-content: center; gap: 2cqw; border-radius: 4.5cqw; padding: 6cqw; text-align: center; }
+.theme-poney .tcard.fa-lock .tc-in { background: rgba(196,155,240,.25); border-color: #e0a0c4; }
+.fa-lock-ic { font-size: 20cqw; filter: grayscale(1) opacity(.7); }
+.fa-lock-t { color: #fff; font-weight: 700; font-size: 7cqw; line-height: 1.1; text-shadow: 1px 1px 0 rgba(0,0,0,.5); }
+.theme-poney .fa-lock-t, .theme-poney .fa-lock .tc-num { color: #6b4a5a; text-shadow: none; }
+
+/* panneau de quête (Mots de la semaine) */
+.quest-panel { margin-bottom: var(--gap); }
+.quest-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: clamp(17px, 2.8vmin, 26px); }
+.quest-badge { background: var(--gold); border: 3px solid var(--ink); padding: .05em .55em; font-weight: 800; font-size: .85em; }
+.theme-poney .quest-badge { border-radius: 999px; border-color: #ffc2dc; background: #fff0a8; }
+.quest-sub { font-size: clamp(14px, 2vmin, 17px); font-weight: 500; }
+.quest-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(8px, 1.8vmin, 18px); margin-top: 10px; max-width: 760px; }
+.quest-slot { cursor: pointer; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.quest-slot .tcard { width: 100%; }
+.quest-step { text-align: center; font-weight: 700; font-size: clamp(13px, 1.9vmin, 17px); line-height: 1.15; display: flex; flex-direction: column; }
+.quest-step small { font-weight: 500; opacity: .8; font-size: .9em; }
+.quest-slot.got .quest-step small { color: #2b8a3e; opacity: 1; font-weight: 700; }
+.quest-tab { --c: #c8921c; --hi: #f5c542; --lo: #8a5a10; }
+.theme-poney .quest-tab { --c: #ffd966; --hi: #fff0b0; --lo: #e0b23a; }
+.quest-album-sum { font-size: clamp(15px, 2.2vmin, 20px); margin: var(--gap) 0 0; }
+
+/* révélation */
+.q-modal { text-align: center; max-width: 96vw; }
+.q-reveal { position: relative; overflow: hidden; padding: 16px 10px 10px; background: rgba(20,12,30,.55); border-radius: 18px; }
+.q-reveal > *:not(.rays) { position: relative; }
+.q-reveal h2 { color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.5); margin: 0 0 4px; font-size: clamp(24px, 5vmin, 44px); }
+.q-sub, .q-hint { color: #fff; font-weight: 700; margin: 4px 0 10px; font-size: clamp(15px, 2.4vmin, 20px); text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.q-card { width: min(70vw, 52vh, 360px); }
+.q-flip { transition: transform .26s ease-in; cursor: pointer; }
+.q-flip.flip-out { transform: scaleX(0) scaleY(1.06); }
+.q-flip.flip-in { animation: flipIn .5s cubic-bezier(.3,1.6,.5,1) both; }
+@media (max-width: 600px) { .quest-cards { gap: 6px; } .quest-sub { display: none; } }
+.q-reveal .q-flip { position: relative !important; inset: auto !important; }
+.fa-hero { width: 70%; bottom: 27%; }
+.theme-poney .fa-hero { width: 80%; bottom: 25%; }
