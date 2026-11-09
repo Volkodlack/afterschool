@@ -36,7 +36,9 @@ print(f'{len(todo)} illustrations à faire, limite {a.limit}')
 
 done = fails = 0
 safe_retry = set()
-for p in todo[:a.limit]:
+queue = todo[:a.limit]
+while queue:
+    p = queue.pop(0)
     prompt = p['prompt']
     if p['id'] in safe_retry:  # faux positif du filtre : formulation plus simple
         prompt = "wholesome children's book illustration, " + prompt.replace(' show', '').replace('proud ', '')
@@ -62,7 +64,8 @@ for p in todo[:a.limit]:
             sys.exit('Jeton refusé : vérifie le secret CF_API_TOKEN (permission Workers AI)')
         if 'NSFW' in msg:
             # le filtre de Cloudflare se trompe parfois sur un dessin d'enfant : on réessaie autrement juste après
-            safe_retry.add(p['id']); todo.insert(todo.index(p) + 1, p); time.sleep(2); continue
+            if p['id'] not in safe_retry: safe_retry.add(p['id']); queue.insert(0, p)
+            time.sleep(2); continue
         fails += 1
         if e.code == 429 or 'neurons' in msg.lower() or 'daily' in msg.lower() or fails >= 3:
             print('Quota du jour atteint : on reprend demain.'); break
