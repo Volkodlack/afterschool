@@ -27,6 +27,7 @@
     UI.floatText(FR.shuffle(['Bravo !', 'Super !', 'Génial !', 'Parfait !', 'Trop fort !', 'Yes !'])[0], r.left + r.width / 2, r.top + 10);
   }
   function fail(root, node) {
+    if (window.Fair) Fair.wrong();
     SFX.play('bad');
     Haptic(120);
     if (node) UI.shake(node);
@@ -69,6 +70,7 @@
       if (raw == null && typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
       const a = raw != null ? raw : attempt();
       if (same(a, target)) locked = true;
+      else if (window.Fair) Fair.attempt(a, target);
       onSubmit(a);
     };
     const kb = UI.keyboard({
@@ -408,6 +410,7 @@
 
   /* ---------- session runner ---------- */
   function runSession(root, cfg) {
+    if (window.Fair) Fair.reset();
     // cfg: {title, rounds:[{game, word}], again: fn}
     UI.setTitle(cfg.title);
     root.innerHTML = '';
@@ -468,6 +471,7 @@
 
   /* ---------- rain game ---------- */
   function runRain(root, { title, words }) {
+    if (window.Fair) Fair.reset();
     UI.setTitle(title);
     root.innerHTML = '';
     const wrap = el('<div class="game center-col"></div>');
@@ -513,7 +517,7 @@
           d.classList.add('hit'); SFX.play('gem'); caught++; got++; drawScore(); UI.burstAt(d, { n: 12, spread: 120 });
           if (got >= need) { Store.recordWord(target, !perWordErr[target], 'pluie'); wi++; if (wi >= queue.length) return end(true); speed += 12; setTarget(); }
         } else {
-          d.classList.add('miss'); SFX.play('bad'); Haptic(120); lives--; missesWrong++; perWordErr[target] = 1; drawHearts();
+          d.classList.add('miss'); SFX.play('bad'); Haptic(120); lives--; missesWrong++; if (window.Fair) Fair.wrong(); perWordErr[target] = 1; drawHearts();
           if (lives <= 0) return end(false);
         }
         setTimeout(() => d.remove(), 700);

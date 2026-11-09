@@ -1415,3 +1415,13 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .q-reveal .q-flip { position: relative !important; inset: auto !important; }
 .fa-hero { width: 70%; bottom: 27%; }
 .theme-poney .fa-hero { width: 80%; bottom: 25%; }
+
+/* cartons jaune / rouge */
+.fair-card { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 12px;
+  width: min(86vw, 460px); animation: fairIn 2.6s ease-out forwards; pointer-events: none; }
+.fair-rect { width: clamp(70px, 14vmin, 120px); aspect-ratio: 3 / 4; border-radius: 10px; border: 4px solid rgba(0,0,0,.35); box-shadow: 0 8px 0 rgba(0,0,0,.25); transform: rotate(-8deg); }
+.fair-card.yellow .fair-rect { background: #ffd43b; }
+.fair-card.red .fair-rect { background: #e03131; }
+.fair-txt { background: #fff; color: #2b1d12; border: 3px solid #2b1d12; border-radius: 14px; padding: .55em .9em; font-weight: 800; text-align: center; font-size: clamp(16px, 2.6vmin, 24px); box-shadow: 0 6px 0 rgba(0,0,0,.25); }
+.fair-card.red .fair-txt { border-color: #e03131; }
+@keyframes fairIn { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } 18% { transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -54%); } }

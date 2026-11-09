@@ -109,6 +109,8 @@
     const words = Object.entries(st.words).map(([w, s]) => ({ w, ...s })).filter(x => x.err > 0).sort((a, b) => (b.err / (b.ok + b.err)) - (a.err / (a.ok + a.err))).slice(0, 12);
     body.appendChild(el(html`<h3>Mots les plus difficiles</h3>`));
     body.appendChild(el(words.length ? `<div class="chips">${words.map(x => `<span class="chip" style="animation:none">${esc(x.w)} <small class="muted">${x.err}✗ ${x.ok}✓</small></span>`).join('')}</div>` : '<p class="muted">Rien à signaler pour l\'instant.</p>'));
+    const fr = st.fair;
+    if (fr && (fr.warn || fr.fines)) body.appendChild(el(html`<p style="margin:12px 0 0">🟨 ${fr.warn} carton${fr.warn > 1 ? 's' : ''} jaune${fr.warn > 1 ? 's' : ''} · 🟥 ${fr.fines} carton${fr.fines > 1 ? 's' : ''} rouge${fr.fines > 1 ? 's' : ''} (−${fr.lost} ${Theme.t.cur})</p>`));
     body.appendChild(el('<h3 style="margin-top:20px">Maîtrise des listes</h3>'));
     Store.lists().forEach(l => {
       const pct = Math.round(Store.listMastery(l) * 100);
@@ -155,6 +157,9 @@
       <div class="field"><label>Sons du jeu</label><div class="seg">
         <button class="pix-btn small ${s.sound ? 'on' : ''}" data-s="1">Activés</button><button class="pix-btn small ${!s.sound ? 'on' : ''}" data-s="0">Coupés</button></div></div>
       ${window.AppUpdate && AppUpdate.available ? `<div class="field"><label>Mises à jour</label><div class="seg" style="align-items:center"><span data-z="ver" style="font-weight:400"></span><button class="pix-btn small gold" data-a="upd">Rechercher une mise à jour</button></div></div>` : ''}
+      <div class="field"><label>Cartons jaunes et rouges</label><div class="seg">
+        <button class="pix-btn small ${s.fair !== false ? 'on' : ''}" data-fair="1">Activés</button><button class="pix-btn small ${s.fair === false ? 'on' : ''}" data-fair="0">Désactivés</button></div>
+        <p class="muted" style="margin:6px 0 0;font-weight:400;font-size:clamp(13px,1.9vmin,17px)">Si l'enfant répond n'importe comment (lettres au hasard, réponses cliquées à toute vitesse) : un carton jaune d'avertissement, puis −5 ${Theme.t.cur} par carton rouge (15 au plus par partie). Les vraies erreurs ne sont jamais sanctionnées.</p></div>
       <div class="field"><label>Code bonus</label><div class="seg bonus-row"><input data-f="bonus" inputmode="numeric" autocomplete="off" placeholder="Entrez un code" style="max-width:260px"><button class="pix-btn small gold" data-a="bonus">Valider</button></div></div>
       <div class="field"><label>Remise à zéro</label><div class="seg"><button class="pix-btn small red" data-a="reset">Effacer la progression (${Theme.t.cur}, niveaux, cartes, chronos)</button></div></div>
       <p class="muted" style="font-size:clamp(13px,1.9vmin,17px)">After School · ${Speech.available() ? 'voix française disponible' : 'voix non disponible : installez « Synthèse vocale Google » et la voix française dans les réglages Android'}</p></div>`));
@@ -249,6 +254,10 @@
       body.querySelectorAll('[data-n]').forEach(x => x.classList.toggle('on', x === b));
     });
     body.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { s.sound = b.dataset.s === '1'; SFX.enabled = s.sound; Store.save(true); body.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
+    body.querySelectorAll('[data-fair]').forEach(b => b.onclick = () => {
+      s.fair = b.dataset.fair === '1'; Store.save(true);
+      body.querySelectorAll('[data-fair]').forEach(x => x.classList.toggle('on', x === b));
+    });
     const upd = body.querySelector('[data-a=upd]');
     if (upd) {
       const i = AppUpdate.info();
