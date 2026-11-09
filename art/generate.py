@@ -36,7 +36,7 @@ print(f'{len(todo)} illustrations à faire, limite {a.limit}')
 
 done = fails = 0
 for p in todo[:a.limit]:
-    body = json.dumps({'prompt': p['prompt'][:2048], 'steps': STEPS, 'seed': p['seed']}).encode()
+    body = json.dumps({'prompt': p['prompt'][:2048], 'steps': STEPS}).encode()
     req = urllib.request.Request(url, data=body, headers={'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -57,7 +57,7 @@ for p in todo[:a.limit]:
         if e.code in (401, 403):
             sys.exit('Jeton refusé : vérifie le secret CF_API_TOKEN (permission Workers AI)')
         fails += 1
-        if e.code == 429 or 'neurons' in msg.lower() or 'limit' in msg.lower() or fails >= 3:
+        if e.code == 429 or 'neurons' in msg.lower() or 'daily' in msg.lower() or fails >= 3:
             print('Quota du jour atteint : on reprend demain.'); break
         time.sleep(5)
     except Exception as e:
