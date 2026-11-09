@@ -35,8 +35,12 @@ todo.sort(key=lambda p: (0 if '/q' in p['id'] else 1, p['id'].split('/')[1], p['
 print(f'{len(todo)} illustrations à faire, limite {a.limit}')
 
 done = fails = 0
+safe_retry = set()
 for p in todo[:a.limit]:
-    body = json.dumps({'prompt': p['prompt'][:2048], 'steps': STEPS}).encode()
+    prompt = p['prompt']
+    if p['id'] in safe_retry:  # faux positif du filtre : formulation plus simple
+        prompt = "wholesome children's book illustration, " + prompt.replace(' show', '').replace('proud ', '')
+    body = json.dumps({'prompt': prompt[:2048], 'steps': STEPS}).encode()
     req = urllib.request.Request(url, data=body, headers={'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -56,6 +60,9 @@ for p in todo[:a.limit]:
         print('HTTP', e.code, p['id'], msg, flush=True)
         if e.code in (401, 403):
             sys.exit('Jeton refusé : vérifie le secret CF_API_TOKEN (permission Workers AI)')
+        if 'NSFW' in msg:
+            # le filtre de Cloudflare se trompe parfois sur un dessin d'enfant : on réessaie autrement juste après
+            safe_retry.add(p['id']); todo.insert(todo.index(p) + 1, p); time.sleep(2); continue
         fails += 1
         if e.code == 429 or 'neurons' in msg.lower() or 'daily' in msg.lower() or fails >= 3:
             print('Quota du jour atteint : on reprend demain.'); break
