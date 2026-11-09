@@ -106,6 +106,26 @@
     c.txt = c.rar === 'or' ? SETS[c.set].legendTxt : E.txt[Math.floor(r() * E.txt.length)];
   });
 
+  /* ---------- illustrations générées (site web) avec repli sur le dessin procédural ---------- */
+  const ART_BASE = window.AfterSchoolNative ? 'https://afterschool.sinisterkid.win/' : '';
+  let ARTIDX = null;
+  const loadIdx = j => { ARTIDX = { pixel: new Set(j.pixel || []), poney: new Set(j.poney || []) }; };
+  try { const j = JSON.parse(localStorage.getItem('afterschool.art') || 'null'); if (j) loadIdx(j); } catch (e) {}
+  fetch(ART_BASE + 'art/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) { loadIdx(j); try { localStorage.setItem('afterschool.art', JSON.stringify(j)); } catch (e) {} } }).catch(() => {});
+  function photo(key) {
+    const s = ARTIDX && ARTIDX[Theme.id];
+    return s && s.has(key) ? ART_BASE + 'art/' + Theme.id + '/' + key + '.webp' : null;
+  }
+  // si l'image ne charge pas (hors connexion), on revient au dessin
+  window.AS_artFail = (img) => {
+    img.onerror = null;
+    const card = img.closest('.tcard');
+    if (card) card.classList.remove('has-photo');
+    if (img.dataset.fb === 'q' && window.Quests) { const q = Quests.QCARDS[+card.dataset.q - 1]; img.insertAdjacentHTML('afterend', Quests.drawnHTML(q)); img.remove(); return; }
+    img.src = art(CARDS[+card.dataset.id - 1]);
+  };
+
   /* ---------- procedural pixel creature ---------- */
   const artCache = {};
   function art(card) {
@@ -276,10 +296,11 @@
     const E = SET.EL[c.el];
     const R = RAR[c.rar];
     const n = opts.count > 1 ? `<span class="tc-count">×${opts.count}</span>` : '';
-    return `<div class="tcard r-${c.rar} el-${c.el} set${c.set}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
+    const ph = photo('c' + c.num);
+    return `<div class="tcard r-${c.rar} el-${c.el} set${c.set} ${ph ? 'has-photo' : ''}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
       <div class="tc-in">
         <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">${SET.label}<b>${c.pv}</b></span><span class="tc-el">${SET.icon(c.el)}</span></div>
-        <div class="tc-art"><img src="${art(c)}" alt=""></div>
+        <div class="tc-art"><img src="${ph || art(c)}" alt=""${ph ? ' onerror="AS_artFail(this)"' : ''}></div>
         <div class="tc-meta">N°${c.num} · ${E.name} · ${R.name} ${R.sym}</div>
         <div class="tc-atk"><span class="tc-cost">${SET.icon(c.el)}${c.dmg >= 60 ? SET.icon(c.el) : ''}</span><b>${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
         <div class="tc-txt">${esc(c.txt)}</div>
@@ -353,7 +374,7 @@
       const b = card.getBoundingClientRect();
       const px = (e.clientX - b.left) / b.width - .5, py = (e.clientY - b.top) / b.height - .5;
       card.style.transform = `rotateY(${px * 18}deg) rotateX(${-py * 18}deg)`;
-      card.style.setProperty('--mx', (px + .5) * 100 + '%');
+      card.style.setProperty('--mx', (px + .5) * 100 + '%'); card.style.setProperty('--my', (py + .5) * 100 + '%');
     });
     card.addEventListener('pointerleave', () => card.style.transform = '');
     SFX.play(c.rar === 'or' ? 'record' : 'pop');
@@ -469,5 +490,5 @@
     }
   });
 
-  window.Cards = { CARDS, art, cardHTML, state, cost, canOpen, opened, ownedCount };
+  window.Cards = { CARDS, art, photo, cardHTML, state, cost, canOpen, opened, ownedCount };
 })();

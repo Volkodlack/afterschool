@@ -15,6 +15,18 @@ cp node_modules/@tesseract.js-data/fra/4.0.0_best_int/fra.traineddata.gz $T/lang
 VER=${GITHUB_SHA:-$(date +%s)}
 LIST=$(cd _site && find . -type f ! -path './vendor/tesseract/*' ! -name sw.js | sed 's#^\./##' | sort | awk '{printf "%s\"%s\"", (NR>1?",":""), $0}')
 sed -i "s#const VERSION = 'dev';#const VERSION = '${VER:0:12}';#; s#const PRECACHE = \[\];#const PRECACHE = [${LIST}];#" _site/sw.js
+# illustrations des cartes (générées par .github/workflows/card-art.yml) : servies par le site, pas dans l'APK
+mkdir -p _site/art
+for t in pixel poney; do [ -d ../art/$t ] && cp -r ../art/$t _site/art/ || true; done
+python3 - <<'PY'
+import json, os, time
+idx = {'v': int(time.time())}
+for t in ('pixel', 'poney'):
+    d = os.path.join('_site/art', t)
+    idx[t] = sorted(f[:-5] for f in os.listdir(d) if f.endswith('.webp')) if os.path.isdir(d) else []
+json.dump(idx, open('_site/art/index.json', 'w'))
+print('illustrations :', {t: len(idx[t]) for t in ('pixel', 'poney')})
+PY
 # mise à jour automatique de l'appli Android : contenu de l'appli zippé + version
 mkdir -p _site/ota
 ( cd ../app/src/main/assets && rm -f ../../../../web/_site/ota/bundle.zip && zip -qr -X ../../../../web/_site/ota/bundle.zip . -x 'tts/*' 'asr/*' )

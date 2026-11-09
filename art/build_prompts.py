@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""Construit art/prompts.json : une illustration par carte (2 mondes × 200 cartes de booster + 144 cartes de quête).
+Les cartes viennent de art/cards.json (extrait de l'appli). Chaque carte a des traits stables (même graine),
+et chaque famille de cartes partage un même style pour que tout le jeu soit cohérent."""
+import json, hashlib, os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+D = json.load(open(os.path.join(HERE, 'cards.json')))
+
+def seed(*parts):
+    return int(hashlib.sha256('|'.join(map(str, parts)).encode()).hexdigest()[:8], 16)
+
+def pick(lst, *parts):
+    return lst[seed(*parts) % len(lst)]
+
+NO_TEXT = 'no text, no letters, no numbers, no watermark, no border, no frame, no card layout'
+PIXEL_STYLE = ('3D voxel art diorama made of tiny cubes, three-quarter view, soft global illumination, tilt-shift depth of field, '
+               'vibrant saturated colors, cute and charming, highly detailed, trading card game illustration, ' + NO_TEXT)
+PONY_STYLE = ('soft 3D render in the style of a modern animated movie, kawaii, pastel colors, glossy, adorable, gentle cinematic lighting, '
+              'highly detailed, trading card game illustration, ' + NO_TEXT)
+
+RARITY = {
+    'c': 'simple calm pose',
+    'pc': 'happy pose, a few sparkles',
+    'r': 'dynamic pose, magical particles, rim light',
+    'ur': 'epic heroic pose, glowing aura, dramatic lighting, holographic sparkles',
+    'or': 'legendary golden version, golden ornaments and a small crown, radiant golden light rays, majestic and rare',
+}
+
+# ---------------- Monde des blocs ----------------
+PX_EL = {
+    'feu': ('fire creature with a flame tail and glowing ember fur, red and orange', 'volcanic landscape with flowing lava and embers'),
+    'eau': ('water creature with fins, a bubble crest and shiny blue skin', 'lake shore with waterfalls and water lilies'),
+    'plante': ('plant creature with leaves, vines and a flower bud on its head, green', 'lush forest clearing with mushrooms and flowers'),
+    'foudre': ('electric creature with lightning-shaped ears, bright yellow, crackling sparks', 'stormy mountain top with lightning in the sky'),
+    'roche': ('rock creature with stone armor plates and small crystals, brown and grey', 'glowing crystal cave'),
+    'air': ('wind creature with fluffy cloud fur and feather wings, white and light cyan', 'floating sky islands above the clouds'),
+    'ombre': ('shadow creature with glowing purple eyes, mysterious night spirit, dark violet', 'moonlit misty forest with fireflies'),
+    'glace': ('ice creature with frosty crystal spikes, pale blue and white', 'snowy glacier with ice crystals'),
+}
+PX_BODY = ['round chubby', 'small fluffy', 'long-tailed', 'tiny dragon-like', 'bunny-eared', 'horned', 'little winged', 'turtle-shelled',
+           'fox-like', 'owl-like', 'cat-like', 'lizard-like']
+PX_EYES = ['big sparkly eyes', 'curious round eyes', 'cheerful smile', 'brave little face']
+PX_VEH = {
+    'car': 'cute little car', 'van': 'camper van', 'taxi': 'yellow taxi', 'bus': 'bus', 'jeep': 'off-road jeep', 'sport': 'sports convertible',
+    'limo': 'long limousine', 'excavator': 'excavator', 'bulldozer': 'bulldozer', 'dump': 'dump truck', 'tractor': 'farm tractor',
+    'mixer': 'cement mixer truck', 'roller': 'road roller', 'crane': 'construction crane', 'steam': 'steam locomotive', 'train': 'train',
+    'tram': 'tramway', 'highspeed': 'high speed bullet train', 'boat': 'little fishing boat', 'sail': 'sailboat', 'speedboat': 'speedboat',
+    'sub': 'submarine', 'liner': 'ocean liner', 'plane': 'propeller plane', 'heli': 'helicopter', 'balloon': 'hot air balloon',
+    'blimp': 'airship blimp', 'jet': 'jet airplane', 'rocket': 'space rocket', 'ufo': 'flying saucer', 'satellite': 'satellite',
+    'rover': 'space rover', 'kart': 'go-kart', 'moto': 'motorbike', 'racecar': 'formula race car', 'monster': 'monster truck',
+    'ambulance': 'ambulance', 'police': 'police car', 'fire': 'fire truck with ladder', 'tow': 'tow truck', 'tank': 'tanker truck',
+}
+PX_VEH_SCENE = {
+    'route': 'countryside road with trees', 'chantier': 'busy construction site', 'rail': 'railway crossing a stone bridge',
+    'mer': 'sea harbor with waves', 'ciel': 'blue sky with fluffy clouds', 'espace': 'outer space with planets and stars',
+    'course': 'race track with flags', 'secours': 'city street with flashing lights',
+}
+COLORS = ['red', 'blue', 'green', 'orange', 'purple', 'teal', 'yellow', 'pink', 'white', 'black']
+
+# ---------------- Centre équestre ----------------
+PO_EL = {
+    'prairie': 'flower meadow with daisies and butterflies', 'plage': 'sunny beach with gentle waves and seashells',
+    'neige': 'snowy winter landscape, wearing a cozy knitted scarf', 'foret': 'enchanted forest with mushrooms and sunbeams',
+    'concours': 'show jumping arena with colorful poles, wearing a saddle and a prize rosette',
+    'carrousel': 'carnival carousel with twinkling lights and ribbons', 'nuit': 'starry night sky with a crescent moon',
+    'arcenciel': 'rainbow and fluffy pastel clouds',
+}
+PO_COAT = ['chestnut brown', 'white', 'cream', 'palomino golden', 'dapple grey', 'black', 'spotted pinto', 'pale pink', 'lavender', 'sky blue',
+           'caramel', 'chocolate']
+PO_MANE = ['pink mane', 'blond mane', 'rainbow mane', 'purple mane', 'white mane', 'blue mane', 'mint mane', 'peach mane']
+PO_GEAR = {
+    'bucket': 'wooden water bucket', 'hay': 'hay bale', 'wheelbarrow': 'wheelbarrow full of straw', 'fork': 'pitchfork', 'lantern': 'stable lantern',
+    'brush': 'grooming brush', 'comb': 'mane comb', 'hoofpick': 'hoof pick', 'sponge': 'soapy sponge with bubbles', 'apple': 'shiny red apple',
+    'carrot': 'carrots bundle', 'sugar': 'sugar cubes', 'cookie': 'horse cookies', 'candy': 'candy treats', 'cupcake': 'carrot cupcake',
+    'saddle': 'leather saddle', 'halter': 'pastel halter', 'blanket': 'horse blanket', 'stirrup': 'stirrup', 'horseshoe': 'lucky horseshoe',
+    'helmet': 'riding helmet', 'boot': 'riding boots', 'glove': 'riding gloves', 'rosette': 'prize rosette ribbon', 'medal': 'gold medal',
+    'trophy': 'golden trophy cup', 'jump': 'show jumping obstacle', 'bow': 'satin ribbon bow', 'crown': 'jeweled tiara', 'heart': 'heart charm',
+    'star': 'magic star', 'wand': 'magic wand', 'rainbow': 'rainbow charm',
+}
+PO_GEAR_SCENE = {
+    'ecurie': 'cozy wooden stable', 'pansage': 'grooming area of a stable', 'friandises': 'kitchen table in a stable', 'sellerie': 'tack room',
+    'cavalier': 'riding school', 'concours': 'show jumping arena', 'deco': 'pastel dressing room', 'magie': 'magical sparkling sky',
+}
+
+# ---------------- Quêtes ----------------
+PLACES = {
+    'Prairie du Départ': 'a sunny starting meadow', 'Ruisseau Clair': 'a clear stream', 'Forêt des Chênes': 'an old oak forest',
+    'Colline aux Vents': 'a windy hill', 'Verger d\'Automne': 'an autumn orchard with apples', 'Grottes de Cristal': 'crystal caves',
+    'Marais Brumeux': 'a misty swamp', 'Forge du Village': 'a village forge', 'Mine Profonde': 'a deep mine with rails and lanterns',
+    'Tour des Orages': 'a tall tower in a thunderstorm', 'Lac Gelé': 'a frozen lake', 'Volcan Grondant': 'a rumbling volcano',
+    'Village Enneigé': 'a snowy village', 'Forêt des Lumières': 'a forest decorated with festive lights', 'Nuit Étoilée': 'a starry night hill',
+    'Pics Glacés': 'icy mountain peaks', 'Désert Doré': 'golden desert dunes', 'Oasis Cachée': 'a hidden oasis with palm trees',
+    'Temple Perdu': 'a lost jungle temple', 'Jungle Épaisse': 'a thick jungle', 'Cascade Géante': 'a giant waterfall',
+    'Îles Volantes': 'floating islands in the sky', 'Château des Brumes': 'a misty castle', 'Champ de Fleurs': 'a field of flowers',
+    'Ruche Dorée': 'a golden beehive among flowers', 'Rivière aux Saumons': 'a river with jumping salmon', 'Canyon Rouge': 'a red canyon',
+    'Plage aux Coquillages': 'a beach with seashells', 'Phare du Bout du Monde': 'a lighthouse at the end of the world',
+    'Récif de Corail': 'a coral reef by the sea', 'Ruines Antiques': 'ancient ruins', 'Montagne Sacrée': 'a sacred mountain',
+    'Cité des Nuages': 'a city in the clouds', 'Labyrinthe Végétal': 'a hedge maze', 'Fête des Lanternes': 'a lantern festival',
+    'Palais de l\'Été': 'a summer palace',
+    'Pré de la Rentrée': 'a green meadow on the first school day', 'Écurie des Lilas': 'a stable covered in lilacs',
+    'Sentier des Mûres': 'a blackberry forest path', 'Manège du Village': 'a village riding ring', 'Verger aux Pommes': 'an apple orchard',
+    'Bois des Écureuils': 'a woodland full of squirrels', 'Lac aux Cygnes': 'a lake with swans', 'Fête des Citrouilles': 'a pumpkin festival',
+    'Colline Brumeuse': 'a misty hill', 'Concours d\'Automne': 'an autumn horse show', 'Forêt Dorée': 'a golden autumn forest',
+    'Première Neige': 'the first snowfall', 'Chalet des Sapins': 'a chalet among fir trees', 'Marché de Noël': 'a Christmas market',
+    'Nuit des Étoiles': 'a night full of stars', 'Montagne Blanche': 'a white snowy mountain', 'Château de Glace': 'an ice castle',
+    'Carnaval des Rubans': 'a ribbon carnival', 'Arc-en-ciel d\'Hiver': 'a winter rainbow', 'Grand Concours': 'a grand horse show',
+    'Pré des Jonquilles': 'a daffodil meadow', 'Ruisseau Chantant': 'a singing brook', 'Ferme aux Agneaux': 'a farm with little lambs',
+    'Jardin des Papillons': 'a butterfly garden', 'Cerisiers en Fleurs': 'cherry blossom trees', 'Plage de Printemps': 'a spring beach',
+    'Phare Rose': 'a pink lighthouse', 'Île aux Mouettes': 'an island with seagulls', 'Prairie Arc-en-ciel': 'a rainbow meadow',
+    'Cascade Fleurie': 'a flowery waterfall', 'Château des Licornes': 'a unicorn castle', 'Grand Prix d\'Été': 'a summer grand prix horse race',
+    'Nuit d\'Été': 'a summer night with fireflies', 'Fête Foraine': 'a funfair', 'Vacances à la Mer': 'a seaside holiday',
+}
+SEASONS = ['late summer', 'autumn', 'autumn', 'winter', 'winter', 'winter', 'spring', 'spring', 'summer', 'summer']
+TIMES = ['at sunrise with soft pink light', 'in bright daylight', 'at sunset with an orange and purple sky', 'at night under a starry sky with a magical golden glow']
+STAGE_PX = ['a small baby', 'a young adventurous', 'a bigger confident', 'a majestic legendary golden']
+STAGE_PO = ['a tiny foal', 'a young', 'a proud show', 'a majestic legendary golden']
+
+def month_of(week):
+    return min(9, int((week - 1) / 3.75))
+
+out = []
+for theme, data in D.items():
+    px = theme == 'pixel'
+    style = PIXEL_STYLE if px else PONY_STYLE
+    for c in data['cards']:
+        rar = RARITY[c['rar']]
+        if c['set'] == 1 and px:
+            look, scene = PX_EL[c['el']]
+            subj = f"a {pick(PX_BODY, theme, c['name'], 'b')} {look}, {pick(PX_EYES, theme, c['name'], 'e')}"
+            prompt = f"{subj}, standing in a {scene}, {rar}, {style}"
+        elif c['set'] == 2 and px:
+            veh = PX_VEH.get(c['k'], 'vehicle')
+            prompt = f"a cute {pick(COLORS, theme, c['name'])} {veh} with a friendly face on the front, on a {PX_VEH_SCENE[c['el']]}, {rar}, {style}"
+        elif c['set'] == 1:
+            pony = f"a {pick(PO_COAT, theme, c['name'], 'c')} pony with a {pick(PO_MANE, theme, c['name'], 'm')}"
+            extra = ' with a small unicorn horn and tiny wings' if c['rar'] == 'ur' else ''
+            prompt = f"{pony}{extra}, in a {PO_EL[c['el']]}, {rar}, {style}"
+        else:
+            obj = PO_GEAR.get(c['k'], 'horse riding accessory')
+            prompt = (f"a cute kawaii {obj} collectible item with a tiny happy pony beside it, in a {PO_GEAR_SCENE.get(c['el'], 'stable')}, {rar}, {style}")
+        out.append({'id': f"{theme}/c{c['num']}", 'seed': seed(theme, 'card', c['num']) % 2147483647, 'prompt': prompt})
+    for q in data['quests']:
+        season = SEASONS[month_of(q['ch'])]
+        place = PLACES.get(q['place'], q['place'])
+        time = TIMES[q['step']]
+        if px:
+            look, _ = PX_EL.get(q['el'], ('creature', ''))
+            hero = f"{STAGE_PX[q['step']]} {pick(PX_BODY, theme, q['hero'], 'b')} {look}"
+        else:
+            hero = f"{STAGE_PO[q['step']]} {pick(PO_COAT, theme, q['hero'], 'c')} pony with a {pick(PO_MANE, theme, q['hero'], 'm')}"
+        glow = ', wearing a small golden crown, radiant golden aura, sparkles everywhere' if q['step'] == 3 else ''
+        prompt = (f"full art trading card illustration, vertical composition, {hero}{glow}, in the lower center, "
+                  f"in {place} in {season} {time}, the landscape fills the whole picture, {style}")
+        # même graine pour les 4 étapes d'une quête : le héros garde la même allure
+        out.append({'id': f"{theme}/q{q['n']:03d}", 'seed': seed(theme, 'quest', q['ch']) % 2147483647, 'prompt': prompt})
+
+json.dump(out, open(os.path.join(HERE, 'prompts.json'), 'w'), ensure_ascii=False, indent=1)
+print(len(out), 'prompts')

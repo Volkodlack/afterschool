@@ -246,12 +246,13 @@
   function markStarted(listId) { if (!listId) return; st().started[listId] = true; Store.save(); check(); }
 
   /* ---------------- cartes : rendu ---------------- */
+  const drawnHTML = c => `<img class="fa-scene" src="${scene(c)}" alt=""><img class="fa-hero" src="${Cards.art(c.heroCard)}" alt="">`;
   function faHTML(c, opts = {}) {
     const S = STEPS[c.step];
-    return `<div class="tcard fa fa-s${c.step}" data-q="${c.n}">
+    const ph = Cards.photo && Cards.photo('q' + String(c.n).padStart(3, '0'));
+    return `<div class="tcard fa fa-s${c.step} ${ph ? 'has-photo' : ''}" data-q="${c.n}">
       <div class="tc-in">
-        <img class="fa-scene" src="${scene(c)}" alt="">
-        <img class="fa-hero" src="${Cards.art(c.heroCard)}" alt="">
+        ${ph ? `<img class="fa-photo" src="${ph}" alt="" data-fb="q" onerror="AS_artFail(this)">` : drawnHTML(c)}
         <div class="fa-top"><span class="fa-name">${esc(c.name)}</span><span class="fa-step" title="${S.name}">${S.icon}</span></div>
         <div class="fa-bottom"><div class="fa-chap">Quête ${c.ch} · ${esc(c.chap.place)}</div><div class="fa-txt">${esc(c.txt)}</div>
           <div class="fa-meta">${c.num} · ${S.name} · ${S.tag}</div></div>
@@ -346,5 +347,5 @@
     root.appendChild(box);
   }
 
-  window.Quests = { QCARDS, STEPS, check, flush, panel, album, markStarted, chapterOf, faHTML, pendingCount: () => st().pending.length, ownedCount: () => Object.keys(st().owned[Theme.id]).length };
+  window.Quests = { drawnHTML, QCARDS, STEPS, check, flush, panel, album, markStarted, chapterOf, faHTML, pendingCount: () => st().pending.length, ownedCount: () => Object.keys(st().owned[Theme.id]).length };
 })();

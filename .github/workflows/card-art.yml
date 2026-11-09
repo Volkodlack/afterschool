@@ -1,0 +1,52 @@
+name: Illustrations des cartes (Cloudflare)
+
+on:
+  schedule:
+    - cron: '20 0 * * *'   # juste après la remise à zéro du quota gratuit (00:00 UTC)
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Nombre maximum d'images"
+        default: '120'
+      only:
+        description: "Seulement ces cartes (ex : pixel/q001,poney/c0) — vide = toutes"
+        default: ''
+      redo:
+        description: "Refaire les images déjà générées (true/false)"
+        default: 'false'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: card-art
+  cancel-in-progress: false
+
+jobs:
+  art:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow
+      - name: Générer
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          python3 art/generate.py --limit "${{ github.event.inputs.limit || '120' }}" --only "${{ github.event.inputs.only }}" $([ "${{ github.event.inputs.redo }}" = "true" ] && echo --redo)
+      - name: Enregistrer et publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "Maxime Samain"
+          git config user.email "max.samain@gmail.com"
+          git add art/pixel art/poney 2>/dev/null || true
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          N=$(git diff --cached --name-only | wc -l)
+          git commit -q -m "Illustrations des cartes : +$N"
+          git pull -q --rebase && git push -q
+          gh workflow run web.yml --ref main
