@@ -167,8 +167,15 @@
     });
     return Theme.ponySVG(Object.assign({ cls: 'pet-svg' }, o), true);
   }
-  function petMarkup(p, mood) {
+  const use3d = () => !!(window.Pet3D && Pet3D.supported());
+  function petMarkup(p, mood, opt) {
     const accs = p.wear ? wornIds(p) : [];
+    if (use3d() && Pet3D.modelKey(p)) {
+      const src = isPony() ? svgUrl(ponyPet(p.species, accs), 300) : pixelPet(p.species, mood || 'idle', accs);
+      const d = { p: { species: p.species, wear: p.wear ? wearOf(p) : {}, xp: p.xp || 0 }, pose: Object.assign({ t: .5 }, opt || {}), size: 320 };
+      Pet3D.hydrateSoon();
+      return `<img class="pet-img p3wait" src="${src}" data-p3='${esc(JSON.stringify(d))}' alt="">`;
+    }
     if (isPony()) return ponyPet(p.species, accs);
     return `<img class="pet-img" src="${pixelPet(p.species, mood || 'idle', accs)}" alt="">`;
   }
@@ -248,8 +255,10 @@
     const scene = w.querySelector('.pet-scene'), petEl = w.querySelector('.pet'), bubble = w.querySelector('.pet-bubble');
     const sayBox = w.querySelector('.pet-say'), sayTxt = w.querySelector('.pet-say-txt');
     const say = (t) => { sayTxt.textContent = t; sayBox.classList.remove('show'); void sayBox.offsetWidth; sayBox.classList.add('show'); };
+    let v3 = null;
     const setMood = (m, ms) => {
-      if (!isPony()) w.querySelector('.pet-body').innerHTML = petMarkup(p, m);
+      if (v3) v3.mood(m);
+      else if (!isPony() && !use3d()) w.querySelector('.pet-body').innerHTML = petMarkup(p, m);
       petEl.dataset.mood = m;
       if (ms) setTimeout(() => { if (petEl.isConnected) setMood(mood(p)); }, ms);
     };
@@ -257,9 +266,10 @@
       ['hunger', 'joy', 'clean'].forEach(k => { const b = w.querySelector(`[data-bar=${k}] i`); b.style.width = p[k] + '%'; b.parentElement.classList.toggle('low', p[k] < 30); });
       w.querySelector('.stars-chip b').textContent = stars();
       w.querySelector('.pet-lvl').textContent = 'Niv. ' + level(p);
-      petEl.className = 'pet stage-' + stage(p) + ' ' + auraCls(p);
+      petEl.className = 'pet stage-' + stage(p) + ' ' + auraCls(p) + (v3 ? ' p3' : '');
       showNeeds();
       w.querySelectorAll('.dirt').forEach(d => d.remove());
+      if (v3) { v3.dirt(p.clean < 50 ? (p.clean < 25 ? 4 : 2) : 0); UI.refreshHud(); return; }
       // taches de boue posées sur le corps (pas à côté), au-dessus du dessin
       const SPOTS = isPony() ? [[30, 50], [46, 55], [36, 63], [52, 47]] : [[28, 60], [56, 64], [40, 72], [62, 52]];
       if (p.clean < 50) SPOTS.slice(0, p.clean < 25 ? 4 : 2).forEach(([x, y]) => { const d = el('<i class="dirt"></i>'); d.style.left = x + '%'; d.style.top = y + '%'; petEl.appendChild(d); });
@@ -283,19 +293,30 @@
     const levelCheck = (up) => { if (up) { SFX.play('level'); UI.confetti(); say(`Youpi ! Je passe au niveau ${level(p)} !`, 4000); } };
     refresh(); setMood(mood(p));
     setTimeout(() => say(message(p)), 600);
+    /* compagnon en 3D : remplace l'image dès que la scène est prête */
+    if (use3d() && Pet3D.modelKey(p)) {
+      const body = w.querySelector('.pet-body');
+      Pet3D.view(body, Object.assign({}, p, { wear: wearOf(p) })).then(v => {
+        if (!body.isConnected) return v.dispose();
+        v3 = v; petEl.classList.add('p3'); body.querySelectorAll('img,svg').forEach(x => x.remove());
+        refresh(); v3.mood(mood(p));
+      }).catch(e => console.warn('3D', e));
+    }
+    const jump = () => { if (v3) v3.act('jump'); else { petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump'); } };
     // blink for pixel pets
-    const blink = setInterval(() => { if (!petEl.isConnected) return clearInterval(blink); if (!isPony() && (!petEl.dataset.mood || petEl.dataset.mood === 'idle')) { setMood('blink'); setTimeout(() => petEl.isConnected && setMood(mood(p)), 160); } }, 3800);
+    const blink = setInterval(() => { if (!petEl.isConnected) return clearInterval(blink); if (!isPony() && !v3 && (!petEl.dataset.mood || petEl.dataset.mood === 'idle')) { setMood('blink'); setTimeout(() => petEl.isConnected && setMood(mood(p)), 160); } }, 3800);
 
     const life = setInterval(() => { if (!petEl.isConnected) return clearInterval(life); tick(); Store.save(); refresh(); setMood(mood(p)); }, 60000);
     let lastPet = 0;
     petEl.onclick = () => {
+      if (v3 && v3.wasDrag()) return;
       if (Date.now() - lastPet < 900) return; lastPet = Date.now();
       if (sleeping()) {
         awakeUntil = Date.now() + 3 * 60000; SFX.play('pop'); setMood(mood(p)); refresh();
         say(`*Bâille*… Coucou ${Store.data.settings.name || ''} ! Il est tard, on fait vite ?`); return;
       }
       p.joy = Math.min(100, p.joy + 3); Store.save();
-      SFX.play('pop'); hearts(2); setMood('happy', 900); petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump');
+      SFX.play('pop'); hearts(2); if (v3) v3.act(Math.random() < .5 ? 'jump' : 'happy'); else { setMood('happy', 900); jump(); }
       refresh();
       if (Math.random() < .35) say(message(p));
     };
@@ -316,7 +337,8 @@
           setTimeout(() => f.classList.add('go'), 20);
           setTimeout(() => {
             f.remove(); SFX.play('gem');
-            let n = 0; const chomp = setInterval(() => { setMood(n % 2 ? 'idle' : 'eat'); if (++n > 5) { clearInterval(chomp); setMood('happy', 1200); } }, 180);
+            if (v3) v3.act('eat');
+            else { let n = 0; const chomp = setInterval(() => { setMood(n % 2 ? 'idle' : 'eat'); if (++n > 5) { clearInterval(chomp); setMood('happy', 1200); } }, 180); }
             UI.burstAt(petEl, { n: 10, spread: 70, colors: ['#e8b77a', '#ffe58a', '#ff8fb1'] });
             p.hunger = Math.min(100, p.hunger + food); p.joy = Math.min(100, p.joy + joy); p.clean = Math.max(0, p.clean - 6);
             const up = addXp(3); Store.save(true); refresh(); hearts(3);
@@ -344,11 +366,11 @@
       const timeout = setTimeout(() => { if (ball.isConnected) { ball.remove(); say('On rejoue quand tu veux !'); } }, 15000);
       ball.onclick = (e) => {
         e.stopPropagation();
-        hits++; SFX.play('pop'); petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump'); fx(hits + '/5');
+        hits++; SFX.play('pop'); jump(); fx(hits + '/5');
         if (hits >= 5) {
           clearTimeout(timeout); ball.remove();
           p.joy = Math.min(100, p.joy + 30); p.hunger = Math.max(0, p.hunger - 6); p.clean = Math.max(0, p.clean - 15);
-          const up = addXp(4); Store.save(true); refresh(); hearts(4); setMood('happy', 1500); SFX.play('good');
+          const up = addXp(4); Store.save(true); refresh(); hearts(4); if (v3) v3.act('happy'); else setMood('happy', 1500); SFX.play('good');
           say(p.clean < 35 ? 'Trop drôle ! Mais je suis plein de boue… un bain ?' : 'Trop drôle ! Encore !'); levelCheck(up);
         } else move();
       };
@@ -368,9 +390,9 @@
       const pop = (t) => {
         const b = t && t.closest && t.closest('.bubble-spot');
         if (!b || b.classList.contains('popped')) return;
-        b.classList.add('popped'); SFX.play('pop'); setTimeout(() => b.remove(), 300);
+        b.classList.add('popped'); SFX.play('pop'); setTimeout(() => b.remove(), 300); if (v3 && left % 3 === 0) v3.act('wash');
         if (--left === 0) {
-          p.clean = 100; const up = addXp(3); Store.save(true); refresh(); setMood('happy', 1500); SFX.play('good');
+          p.clean = 100; const up = addXp(3); Store.save(true); refresh(); if (v3) v3.act('happy'); else setMood('happy', 1500); SFX.play('good');
           UI.burstAt(petEl, { n: 18, spread: 120, colors: ['#ffffff', '#cfeaff', '#7ec8f5'] });
           say('Je brille comme un sou neuf !'); levelCheck(up);
         }
@@ -404,7 +426,7 @@
       const pct = Math.min(100, Math.round(stars() / price * 100));
       const b = el(`<div class="shop-item ${worn ? 'worn' : ''} ${owned ? 'owned' : ''}">
         <span class="slot-tag">${SLOT_NAMES[slot]}</span>
-        <div class="shop-prev ${slot === 'aura' ? 'aura-' + id : ''}">${petMarkup(preview, 'happy')}</div><b>${name}</b>
+        <div class="shop-prev ${slot === 'aura' ? 'aura-' + id : ''}">${petMarkup(preview, 'happy', /head|eyes|neck|horn/.test(slot) ? { focus: 'head' } : null)}</div><b>${name}</b>
         ${owned ? `<button class="pix-btn small ${worn ? '' : 'green'}">${worn ? 'Enlever' : 'Mettre'}</button>`
           : `<button class="pix-btn small gold"><span style="width:1.1em;display:inline-flex">${starIcon()}</span> ${price}</button>
              ${pct < 100 ? `<div class="save-bar"><i style="width:${pct}%"></i></div><small>${price - stars()} de plus</small>` : ''}`}</div>`);
@@ -507,12 +529,22 @@
     const N = window.AfterSchoolNative;
     const p = pet();
     if (!N || !N.setPetFrames || !p) return;
-    const key = [Theme.id, p.species, JSON.stringify(p.wear || {}), stage(p), 4].join('|');
+    const p3 = use3d() && Pet3D.modelKey(p);
+    const key = [Theme.id, p.species, JSON.stringify(p.wear || {}), stage(p), p3 ? '3d1' : 4].join('|');
     try { if (localStorage.getItem('afterschool.frames.' + Store.currentId()) === key) return; } catch (e) {}
     const S = 192;
     const face = { idle: ['idle', 'blink'], happy: ['happy', 'idle'], hungry: ['sad', 'eat'], dirty: ['sad', 'sad'], bored: ['sad', 'blink'], sleep: ['sleep', 'sleep'] };
     const accs = wornIds(p);
-    const petSrc = async m => isPony() ? loadImg(svgUrl(ponyPet(p.species, accs), 300)) : loadImg(pixelPet(p.species, m, accs));
+    const POSE = { idle: { t: .3 }, blink: { t: 1.1, shut: true }, happy: { play: 'happy', t: .35 }, eat: { play: 'eat', t: .5 }, sad: { base: 'sad', t: 1.2 }, sleep: { base: 'sleep', t: 1.5, shut: true } };
+    const petSrc = async (m, k, f) => {
+      if (p3) {
+        try {
+          const pose = Object.assign({}, POSE[m] || POSE.idle); if (k === 'idle' && f) pose.t = 1.1; if (k === 'happy' && f) pose.t = .7;
+          return await loadImg(await Pet3D.snap({ species: p.species, wear: wearOf(p), xp: p.xp || 0, dirty: k === 'dirty' ? 4 : 0 }, pose, 300));
+        } catch (e) { console.warn(e); }
+      }
+      return isPony() ? loadImg(svgUrl(ponyPet(p.species, accs), 300)) : loadImg(pixelPet(p.species, m, accs));
+    };
     const food = await loadImg(svgUrl(foodIcon(FOOD[Theme.id][0][0]).replace(/class="[^"]*"/, ''), 64)).catch(() => null);
     const out = {};
     for (const k of Object.keys(face)) {
@@ -520,8 +552,8 @@
       for (let f = 0; f < 2; f++) {
         const cv = document.createElement('canvas'); cv.width = cv.height = S;
         const c = cv.getContext('2d');
-        c.imageSmoothingEnabled = isPony();
-        const img = await petSrc(face[k][f]);
+        c.imageSmoothingEnabled = isPony() || !!p3;
+        const img = await petSrc(face[k][f], k, f);
         let dy = 0, rot = 0, sx = 1, sy = 1;
         if (k === 'happy' && f === 1) dy = -12;
         if (k === 'idle' && f === 1) { sx = 1.03; sy = .97; }
