@@ -8,23 +8,25 @@
   const M = {
     chat:    { file: 'chat', droop: .15, roundEyes: true, neck: { y: .16, r: .82 }, yaw: .3, anims: { idle: 'Idle', happy: 'Dance', eat: 'Bite_Front', jump: 'Jump', wash: 'HitRecieve', no: 'No', sad: null },
                colors: { Cat_Main: '#f0a35e', Cat_Secondary: '#fff3e0', Ears: '#ffb3c7' } },
-    renard:  { file: 'renard', neck: { r: 1.4 }, acc: 1.6, yaw: .62, anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_2_HeadLow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_ToIdle', wash: 'Idle_HitReact1' } },
-    lapin:   { file: 'lapin', roundEyes: true, neck: { force: true, y: .02, r: .62 }, yaw: .3, anims: { idle: 'Idle', happy: 'Yes', jump: 'Jump', hello: 'Wave', wash: 'HitReact', no: 'No', eat: null, sad: null },
-               colors: { Bunny_Main: '#f4f1f2', Bunny_Secondary: '#ffb3c7', 'Material.024': '#ff9a3c', 'Material.011': '#6cc04a' } },
     slime:   { file: 'slime', droop: 0, roundEyes: true, neck: { y: .2, r: .85 }, yaw: .3, anims: { idle: 'Idle', happy: 'Dance', eat: 'Bite_Front', jump: 'Jump', wash: 'HitRecieve', no: 'No', sad: null },
                colors: { Pink_Main: '#7ed957', Pink_Secondary: '#3f9e3a' }, headBones: ['Head', 'Head2', 'Head3', 'Body'] },
     dragon:  { file: 'dragon', droop: .35, neck: { force: true, y: .05, r: .7 }, acc: 1.2, wide: 1, roundEyes: true, yaw: .35, fly: true, anims: { idle: 'Flying_Idle', happy: 'Yes', jump: 'Fast_Flying', wash: 'HitReact', no: 'No', eat: null, sad: null },
                colors: { Dragon_Main: '#9a6ad6', Dragon_Secondary: '#ffd86b', Dragon_Horn: '#fff4d6' } },
     dragon2: { file: 'dragon2', droop: .35, neck: { force: true, y: .05, r: .7 }, acc: 1.2, wide: 1, roundEyes: true, yaw: .35, fly: true, anims: { idle: 'Flying_Idle', happy: 'Yes', jump: 'Fast_Flying', wash: 'HitReact', no: 'No', eat: null, sad: null },
                colors: { Dragon_Main: '#8a5ad0', Dragon_Secondary: '#ffd86b', Dragon_Horn: '#fff4d6' } },
-    mouton:  { file: 'mouton', neck: { r: 1.35 }, acc: 1.4, yaw: .62, anims: { idle: 'Idle', jump: 'Jump', happy: 'Jump', eat: null, sad: null, wash: null },
-               colors: { White: '#fbf7f0', Black: '#4a3b35' } },
+    /* compagnons faits main (art/pony/critters.js) : un modèle par stade d'évolution */
+    ...(() => {
+      const o = {}, A = { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' };
+      ['renard', 'lapin', 'mouton'].forEach(k => [1, 2, 3].forEach(st => { o[k + st] = { file: k + st, ownEyes: true, neck: { r: 1.1 }, acc: { renard: .82, lapin: .8, mouton: .72 }[k], yaw: k === 'lapin' ? .4 : .55, anims: A }; }));
+      return o;
+    })(),
     poney:   { file: 'poney', neck: { r: 1.15 }, acc: 1.15, yaw: .55, ownBlaze: true, ownEyes: true, wing: .62, anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' } },
   };
   const PONY = ['poney', 'licorne', 'pegase', 'poulain', 'nuit', 'tachete'];
   function modelKey(p) {
     if (PONY.includes(p.species)) return 'poney';
     if (p.species === 'dragon' && p.stage === 3) return 'dragon2';
+    if (['renard', 'lapin', 'mouton'].includes(p.species)) return p.species + Math.min(3, Math.max(1, p.stage || 1));
     return M[p.species] ? p.species : null;
   }
 

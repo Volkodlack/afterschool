@@ -179,11 +179,11 @@ for theme in ('pixel', 'poney'):
 W_SPECIES = {
     'pixel': {
         'chat': 'a cute orange tabby kitten with big round eyes',
-        'renard': 'a cute little orange fox with a white chest and a big fluffy white-tipped tail',
+        'renard': 'a cute chubby little orange fox with big eyes, white cheeks and chest, dark paws and a big fluffy white-tipped tail',
         'lapin': 'a cute white bunny with long pink-lined ears and big eyes',
         'slime': 'a cute bouncy green jelly slime blob with big shiny eyes and a happy face',
         'dragon': 'a cute baby purple dragon with small yellow horns, a yellow belly and little wings',
-        'mouton': 'a cute fluffy little sheep with cream curly wool and a soft brown face',
+        'mouton': 'a cute chubby little lamb with fluffy white cloud-like wool, a soft cream face and dark brown legs',
     },
     'poney': {
         'poney': 'a chubby chibi pony with a caramel coat, a fluffy pink mane, a white star on the forehead and white socks',
