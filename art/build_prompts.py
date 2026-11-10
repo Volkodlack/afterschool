@@ -178,11 +178,11 @@ for theme in ('pixel', 'poney'):
 # (le haut de l'image reste dégagé : l'appli y écrit la série de jours et une petite phrase)
 W_SPECIES = {
     'pixel': {
-        'chat': 'a cute orange tabby kitten with big round eyes',
+        'chat': 'a cute chubby orange tabby kitten with big green eyes, a cream chest and white paws',
         'renard': 'a cute chubby little orange fox with big eyes, white cheeks and chest, dark paws and a big fluffy white-tipped tail',
         'lapin': 'a cute white bunny with long pink-lined ears and big eyes',
         'slime': 'a cute bouncy green jelly slime blob with big shiny eyes and a happy face',
-        'dragon': 'a cute baby purple dragon with small yellow horns, a yellow belly and little wings',
+        'dragon': 'a cute chubby baby purple dragon with big eyes, small cream horns, a yellow belly and little lilac bat wings',
         'mouton': 'a cute chubby little lamb with fluffy white cloud-like wool, a soft cream face and dark brown legs',
     },
     'poney': {

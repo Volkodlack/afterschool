@@ -1,3 +1,2 @@
-Modèles 3D des compagnons : Quaternius (https://quaternius.com)
-Packs « Ultimate Animated Animals », « Ultimate Monsters », « Farm Animals », « Animated Animal Pack ».
-Licence CC0 1.0 Universal (domaine public) — https://creativecommons.org/publicdomain/zero/1.0/
+Modèles 3D des compagnons : faits main pour After School (art/pony/pony.js et art/pony/critters.js),
+exportés par art/pony/export.py. Aucun modèle tiers.
