@@ -232,17 +232,20 @@
         prompt.textContent = 'Écris-le sans regarder !';
         tools.innerHTML = '';
         tools.appendChild(UI.speakBtn(word));
-        // le mot ne se regarde qu'une fois : pas de « Revoir », et une erreur ne le montre plus
-        // (seules les lettres justes restent ; au bout de 3 essais ratés, on le montre pour ne pas bloquer)
+        // un seul coup d'œil « bonus » pendant l'écriture, pas plus ; une erreur ne remontre pas le mot
+        const peek = el(`<button class="pix-btn wood">${Pixel.svg('eye')} Revoir (1 fois)</button>`);
+        tools.appendChild(peek);
+        peek.onclick = () => {
+          errors++; peek.remove(); SFX.play('pop');
+          big.classList.remove('covered'); setTimeout(() => big.classList.add('covered'), 1600);
+        };
         const t = typer(area, word, {
           onSubmit(v) {
             if (same(v, word)) { big.classList.remove('covered'); success(root, big); setTimeout(() => done(errors), 1100); }
             else {
               errors++; fail(root, t.slots); t.showDiff();
-              const reveal = errors >= 3;
-              prompt.textContent = reveal ? 'Voici le mot. Regarde bien !' : 'Presque ! Les lettres vertes sont justes.';
-              if (reveal) big.classList.remove('covered');
-              setTimeout(() => { big.classList.add('covered'); t.keepCorrect(); prompt.textContent = 'À toi !'; }, 2400);
+              prompt.textContent = 'Presque ! Les lettres vertes sont justes.';
+              setTimeout(() => { t.keepCorrect(); prompt.textContent = 'À toi !'; }, 2400);
             }
           }
         });
