@@ -531,7 +531,8 @@
         if (!d || !d.pet) return;
         const q = d.pet;
         list.push({ childId: pr.id, child: (d.settings && d.settings.name) || pr.name || '', name: q.name, hunger: q.hunger, joy: q.joy, clean: q.clean, t: q.t || Date.now(),
-          lastDay: d.stats && d.stats.lastDay, current: pr.id === Store.currentId(), theme: (d.settings && d.settings.theme) || 'pixel' });
+          lastDay: d.stats && d.stats.lastDay, current: pr.id === Store.currentId(), theme: (d.settings && d.settings.theme) || 'pixel',
+          species: q.species || '', streak: (d.stats && d.stats.streak) || 0 });
       });
       N.syncPets(JSON.stringify(list));
       if (pet()) frames();

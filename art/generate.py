@@ -30,8 +30,18 @@ for p in prompts:
     if os.path.exists(path) and not a.redo:
         continue
     todo.append(p)
-# ordre : d'abord les cartes de quête et les dorées, puis le reste (alterné entre les deux mondes)
-todo.sort(key=lambda p: (-1 if '/bg_' in p['id'] else 0 if '/q' in p['id'] else 1, p['id'].split('/')[1], p['id']))
+# ordre : d'abord les décors, les cartes de quête et les dorées, puis le reste (alterné entre les deux mondes)
+# puis, une fois toutes les cartes faites, les scènes du widget (scène par scène, pour tous les compagnons)
+W_RANK = {}
+def rank(p):
+    i = p['id']
+    if '/w_' in i:
+        scene = i.split('/w_', 1)[1].split('_', 1)[1]
+        return (2, W_RANK.setdefault(scene, len(W_RANK)), i)
+    return (-1 if '/bg_' in i else 0 if '/q' in i else 1, i.split('/')[1], i)
+for p in prompts:
+    if '/w_' in p['id']: rank(p)
+todo.sort(key=rank)
 print(f'{len(todo)} illustrations à faire, limite {a.limit}')
 
 done = fails = 0

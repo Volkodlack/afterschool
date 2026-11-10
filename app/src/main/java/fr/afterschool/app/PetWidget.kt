@@ -40,7 +40,8 @@ object PetLogic {
     data class Pet(
         val childId: String, val child: String, val name: String,
         val hunger: Double, val joy: Double, val clean: Double,
-        val lastDay: String?, val current: Boolean, val theme: String
+        val lastDay: String?, val current: Boolean, val theme: String,
+        val species: String = "", val streak: Int = 0
     )
 
     fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -48,6 +49,7 @@ object PetLogic {
     @JvmStatic
     fun savePets(c: Context, json: String) {
         prefs(c).edit().putString("pets", json).apply()
+        Thread { WidgetScenes.prefetch(c.applicationContext) }.start()
     }
 
     @JvmStatic
@@ -89,7 +91,8 @@ object PetLogic {
                     Pet(
                         o.optString("childId"), o.optString("child"), o.optString("name"),
                         dec(o.optDouble("hunger", 80.0), RATE_HUNGER), dec(o.optDouble("joy", 80.0), if (dirty) RATE_JOY * 2 else RATE_JOY), dec(o.optDouble("clean", 80.0), RATE_CLEAN),
-                        if (o.isNull("lastDay")) null else o.optString("lastDay"), o.optBoolean("current"), o.optString("theme", "pixel")
+                        if (o.isNull("lastDay")) null else o.optString("lastDay"), o.optBoolean("current"), o.optString("theme", "pixel"),
+                        o.optString("species", ""), o.optInt("streak", 0)
                     )
                 )
             }
@@ -158,12 +161,25 @@ class PetWidget : AppWidgetProvider() {
             val pets = PetLogic.pets(context)
             val p = pets.firstOrNull { it.current } ?: pets.firstOrNull()
             if (p == null) {
+                v.setViewVisibility(R.id.widget_scene, View.GONE)
+                v.setViewVisibility(R.id.widget_classic, View.VISIBLE)
                 v.setTextViewText(R.id.widget_title, "After School")
                 v.setTextViewText(R.id.widget_status, "Ouvre l'appli pour adopter ton compagnon !")
                 v.setViewVisibility(R.id.widget_bars, View.GONE)
                 v.setImageViewResource(R.id.widget_f1, R.mipmap.ic_launcher)
                 v.setImageViewResource(R.id.widget_f2, R.mipmap.ic_launcher)
             } else {
+                val scene = WidgetScenes.bitmap(context, p)
+                if (scene != null) {
+                    // grande illustration façon Duolingo
+                    v.setImageViewBitmap(R.id.widget_scene, scene)
+                    v.setViewVisibility(R.id.widget_scene, View.VISIBLE)
+                    v.setViewVisibility(R.id.widget_classic, View.GONE)
+                    mgr.updateAppWidget(id, v)
+                    return
+                }
+                v.setViewVisibility(R.id.widget_scene, View.GONE)
+                v.setViewVisibility(R.id.widget_classic, View.VISIBLE)
                 val n = PetLogic.need(p)
                 val f1 = PetLogic.frame(context, n, 0) ?: PetLogic.frame(context, "idle", 0)
                 val f2 = PetLogic.frame(context, n, 1) ?: f1
@@ -175,7 +191,7 @@ class PetWidget : AppWidgetProvider() {
                 v.setProgressBar(R.id.widget_hunger, 100, p.hunger.toInt(), false)
                 v.setProgressBar(R.id.widget_joy, 100, p.joy.toInt(), false)
                 v.setProgressBar(R.id.widget_clean, 100, p.clean.toInt(), false)
-                v.setInt(R.id.widget_root, "setBackgroundResource", if (p.theme == "poney") R.drawable.widget_bg_poney else R.drawable.widget_bg_pixel)
+                v.setInt(R.id.widget_classic, "setBackgroundResource", if (p.theme == "poney") R.drawable.widget_bg_poney else R.drawable.widget_bg_pixel)
                 val ink = if (p.theme == "poney") 0xFF6B4A5A.toInt() else 0xFF2B1D12.toInt()
                 v.setTextColor(R.id.widget_title, ink)
                 v.setTextColor(R.id.widget_status, ink)
@@ -187,6 +203,7 @@ class PetWidget : AppWidgetProvider() {
 
 class PetWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
+        WidgetScenes.prefetch(applicationContext)
         PetWidget.updateAll(applicationContext)
         PetNotifier.check(applicationContext)
         return Result.success()
@@ -268,7 +285,7 @@ object PetNotifier {
             .setContentIntent(pi)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        if (p.current) PetLogic.frame(c, PetLogic.need(p), 0)?.let { b.setLargeIcon(it) }
+        if (p.current) (WidgetScenes.bitmap(c, p) ?: PetLogic.frame(c, PetLogic.need(p), 0))?.let { b.setLargeIcon(it) }
         try {
             NotificationManagerCompat.from(c).notify(p.childId.hashCode(), b.build())
         } catch (_: SecurityException) {

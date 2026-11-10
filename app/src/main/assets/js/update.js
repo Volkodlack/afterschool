@@ -1,6 +1,6 @@
 /* Mises à jour automatiques de l'appli Android (voir Updater.kt).
    AS_REQUIRED_NATIVE_API : à augmenter en même temps que Updater.NATIVE_API quand le code Android change. */
-window.AS_REQUIRED_NATIVE_API = 1;
+window.AS_REQUIRED_NATIVE_API = 2;
 (function () {
   const N = window.AfterSchoolNative || null;
   const AS = window.AS_native;

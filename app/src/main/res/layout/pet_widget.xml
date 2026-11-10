@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- scène illustrée façon Duolingo (image composée par l'appli : coins arrondis, série et phrase) -->
+    <ImageView
+        android:id="@+id/widget_scene"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        android:contentDescription="Compagnon" />
+
+<LinearLayout
+    android:id="@+id/widget_classic"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -82,3 +96,4 @@
             android:progressTint="#7ec8f5" android:progressBackgroundTint="#ffffff" />
     </LinearLayout>
 </LinearLayout>
+</FrameLayout>
