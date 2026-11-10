@@ -1463,3 +1463,9 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .pet.p3.need-dirty .pet-body { filter: none !important; }
 .pet.p3, .theme-poney .pet.p3 { height: 78%; } .pet.p3.stage-1, .theme-poney .pet.p3.stage-1 { height: 70%; } .pet.p3.stage-3, .theme-poney .pet.p3.stage-3 { height: 86%; }
 .pet.p3.stage-3::after { z-index: 2; }
+/* décor réaliste derrière le compagnon */
+.pet-scene.has-bg, .theme-poney .pet-scene.has-bg { background: var(--pet-bg) center 78% / cover no-repeat; }
+.pet-scene.has-bg .pet-floor { display: none; }
+.pet-scene.has-bg .night-sky { background: none; }
+.pet-scene.has-bg.bg-night .night-sky .moon { display: none; }
+.pet-scene.has-bg::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 60%, rgba(0,0,0,.18)); }

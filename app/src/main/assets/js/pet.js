@@ -278,6 +278,7 @@
     function showNeeds() {
       const n = need(p), box = w.querySelector('.needs');
       scene.classList.toggle('night', n === 'sleep');
+      setBackdrop();
       ['hungry', 'dirty', 'bored', 'sleep', 'happy'].forEach(k => petEl.classList.toggle('need-' + k, n === k || (k === 'dirty' && p.clean < 35 && n !== 'sleep')));
       let h = '';
       if (n === 'sleep') h = '<span class="zzz"><b>Z</b><b>z</b><b>z</b></span>';
@@ -287,6 +288,19 @@
       if (n === 'happy') h += '<span class="sparkle-fx">✦</span><span class="sparkle-fx s2">✧</span>';
       box.innerHTML = h;
       Pet.sync();
+    }
+    /* décor réaliste (illustration générée) selon l'heure : jour, soir, nuit — sinon le décor dessiné */
+    let bgKey = '';
+    function setBackdrop() {
+      const h = new Date().getHours() + new Date().getMinutes() / 60;
+      const k = (sleeping() || isNight()) ? 'bg_night' : h >= 18 ? 'bg_eve' : 'bg_day';
+      const url = window.ArtPhoto && (ArtPhoto(k) || (k === 'bg_eve' && ArtPhoto('bg_day')));
+      if (v3) v3.light(k);
+      if (!url || bgKey === url) return;
+      bgKey = url;
+      const im = new Image();
+      im.onload = () => { if (bgKey !== url) return; scene.style.setProperty('--pet-bg', `url("${url}")`); scene.classList.add('has-bg'); scene.classList.toggle('bg-night', k === 'bg_night'); };
+      im.src = url;
     }
     const fx = (txt, cls = '') => { const f = el(`<span class="pet-pop ${cls}">${txt}</span>`); f.style.left = (35 + Math.random() * 30) + '%'; w.querySelector('.pet-fx').appendChild(f); setTimeout(() => f.remove(), 1300); };
     const hearts = (n = 3) => { for (let i = 0; i < n; i++) setTimeout(() => fx(isPony() ? '♥' : '❤', 'heart'), i * 120); };
@@ -299,7 +313,7 @@
       Pet3D.view(body, Object.assign({}, p, { wear: wearOf(p) })).then(v => {
         if (!body.isConnected) return v.dispose();
         v3 = v; petEl.classList.add('p3'); body.querySelectorAll('img,svg').forEach(x => x.remove());
-        refresh(); v3.mood(mood(p));
+        refresh(); v3.mood(mood(p)); setBackdrop();
       }).catch(e => console.warn('3D', e));
     }
     const jump = () => { if (v3) v3.act('jump'); else { petEl.classList.remove('jump'); void petEl.offsetWidth; petEl.classList.add('jump'); } };

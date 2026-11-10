@@ -155,5 +155,24 @@ for theme, data in D.items():
         # même graine pour les 4 étapes d'une quête : le héros garde la même allure
         out.append({'id': f"{theme}/q{q['n']:03d}", 'seed': seed(theme, 'quest', q['ch']) % 2147483647, 'prompt': prompt})
 
+# décors derrière le compagnon (écran d'accueil) : paysage vide, sol au premier plan, centre dégagé
+EMPTY = 'wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, '
+BG = {
+    'pixel': ('3D voxel art landscape made of tiny cubes, soft global illumination, tilt-shift depth of field, vibrant colors, cute, highly detailed, '
+              'a flat open grassy clearing in the lower center foreground, blocky oak and birch trees with flowers on the left and right sides, '
+              'distant cubic hills and a small river, ' + NO_TEXT),
+    'poney': ('soft 3D render in the style of a modern animated movie, kawaii, pastel colors, gentle cinematic lighting, highly detailed, '
+              'an empty riding school paddock, soft sandy ground in the lower center foreground, white wooden fences on the sides, '
+              'a cute red wooden stable with flower boxes in the background, rolling green hills, ' + NO_TEXT),
+}
+BG_TIME = {
+    'bg_day': 'bright sunny day, blue sky with fluffy clouds, warm morning sunlight',
+    'bg_eve': 'golden sunset, orange and pink sky, long soft shadows, warm evening light',
+    'bg_night': 'calm night, deep blue starry sky, big glowing moon, fireflies, soft blue moonlight, small warm lanterns',
+}
+for theme in ('pixel', 'poney'):
+    for k, t in BG_TIME.items():
+        out.append({'id': f"{theme}/{k}", 'seed': seed(theme, k) % 2147483647, 'prompt': EMPTY + t + ', ' + BG[theme]})
+
 json.dump(out, open(os.path.join(HERE, 'prompts.json'), 'w'), ensure_ascii=False, indent=1)
 print(len(out), 'prompts')

@@ -422,14 +422,17 @@
     function update(dt) {
       t += dt;
       if (one && t >= oneEnd) { one = null; const b = base; base = b; const k = baseKey; const name = cfg.anims[k] !== undefined && cfg.anims[k] ? cfg.anims[k] : cfg.anims.idle; const a = act(name); if (a && a !== base) { a.reset(); a.play(); base.crossFadeTo(a, .3, false); base = a; } if (a) a.timeScale = k === 'sleep' ? .35 : (k === 'sad' && !cfg.anims.sad) ? .6 : 1; }
+      const hb0 = inst.info.headBone;
+      if (hb0 && hb0.userData.add) { hb0.rotation.x -= hb0.userData.add; hb0.userData.add = 0; } // retire la retouche de l'image précédente
       mixer.update(dt);
       /* retouches procédurales après le mixeur */
       const want = { sad: baseKey === 'sad' && !cfg.anims.sad ? 1 : 0, sleep: baseKey === 'sleep' ? 1 : 0 };
       for (const k in want) st[k] += (want[k] - st[k]) * Math.min(1, dt * 4);
       const hb = inst.info.headBone;
       if (hb && hb !== inst.info.bodyBone) {
-        const dr = cfg.droop == null ? 1 : cfg.droop; hb.rotation.x += (st.sad * .35 + st.sleep * .3) * dr;
-        if (st.chomp > 0) { st.chomp -= dt; hb.rotation.x += Math.max(0, Math.sin(st.chomp * 14)) * .28 * (cfg.droop == null ? 1 : .4); }
+        const dr = cfg.droop == null ? 1 : cfg.droop; let add = (st.sad * .35 + st.sleep * .3) * dr;
+        if (st.chomp > 0) { st.chomp -= dt; add += Math.max(0, Math.sin(st.chomp * 14)) * .28 * (cfg.droop == null ? 1 : .4); }
+        hb.rotation.x += add; hb.userData.add = add;
       }
       let y = 0, sy = 1, rz = 0;
       if (st.sleep > .01) { sy = 1 - st.sleep * (.08 + Math.sin(t * 1.6) * .025); y -= st.sleep * .04; }
@@ -454,8 +457,9 @@
   function stage(theme) {
     const { THREE } = window.T3;
     const sc = new THREE.Scene();
-    sc.add(new THREE.HemisphereLight(theme === 'poney' ? '#fff6fb' : '#f4fbff', theme === 'poney' ? '#9ee0a8' : '#8a6a4a', 1.5));
+    const hemi = new THREE.HemisphereLight(theme === 'poney' ? '#fff6fb' : '#f4fbff', theme === 'poney' ? '#9ee0a8' : '#8a6a4a', 1.5); sc.add(hemi);
     const key = new THREE.DirectionalLight('#fff4e0', 2.4); key.position.set(-1.2, 2.2, 2.4); sc.add(key);
+    sc.userData.lights = { hemi, key };
     const rim = new THREE.DirectionalLight(theme === 'poney' ? '#ffd1e8' : '#cfe8ff', 1.3); rim.position.set(1.6, 1.2, -2); sc.add(rim);
     const fill = new THREE.DirectionalLight('#ffffff', .5); fill.position.set(2, .5, 2); sc.add(fill);
     const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d');
@@ -607,7 +611,14 @@
       },
       act(k) { an.play(k); },
       dirt(n) { inst.dirt.forEach((d, i) => d.visible = i < n); },
-      wasDrag() { return moved > 8; }
+      wasDrag() { return moved > 8; },
+      /* lumière accordée au décor : jour, coucher de soleil, clair de lune */
+      light(k) {
+        const L = sc.userData.lights;
+        if (k === 'bg_night') { L.hemi.intensity = .75; L.hemi.color.set('#9fb4ff'); L.key.intensity = 1.3; L.key.color.set('#b8c8ff'); }
+        else if (k === 'bg_eve') { L.hemi.intensity = 1.25; L.hemi.color.set('#ffd9c0'); L.key.intensity = 2.3; L.key.color.set('#ffb070'); }
+        else { L.hemi.intensity = 1.5; L.hemi.color.set(Theme.id === 'poney' ? '#fff6fb' : '#f4fbff'); L.key.intensity = 2.4; L.key.color.set('#fff4e0'); }
+      }
     };
     views.add(v);
     if (!raf) { last = 0; raf = requestAnimationFrame(loop); }

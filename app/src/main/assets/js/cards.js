@@ -117,6 +117,7 @@
     const s = ARTIDX && ARTIDX[Theme.id];
     return s && s.has(key) ? ART_BASE + 'art/' + Theme.id + '/' + key + '.webp' : null;
   }
+  window.ArtPhoto = photo;
   // si l'image ne charge pas (hors connexion), on revient au dessin
   window.AS_artFail = (img) => {
     img.onerror = null;

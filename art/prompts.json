@@ -3438,5 +3438,35 @@
   "id": "poney/q144",
   "seed": 1144704315,
   "prompt": "full art trading card illustration, vertical composition, a majestic legendary golden cream pony with a pink mane, wearing a small golden crown, radiant golden aura, sparkles everywhere, in the lower center, in a seaside holiday in summer at night under a starry sky with a magical golden glow, the landscape fills the whole picture, soft 3D render in the style of a modern animated movie, kawaii, pastel colors, glossy, adorable, gentle cinematic lighting, highly detailed, trading card game illustration, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "pixel/bg_day",
+  "seed": 1747597054,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, bright sunny day, blue sky with fluffy clouds, warm morning sunlight, 3D voxel art landscape made of tiny cubes, soft global illumination, tilt-shift depth of field, vibrant colors, cute, highly detailed, a flat open grassy clearing in the lower center foreground, blocky oak and birch trees with flowers on the left and right sides, distant cubic hills and a small river, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "pixel/bg_eve",
+  "seed": 968149692,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, golden sunset, orange and pink sky, long soft shadows, warm evening light, 3D voxel art landscape made of tiny cubes, soft global illumination, tilt-shift depth of field, vibrant colors, cute, highly detailed, a flat open grassy clearing in the lower center foreground, blocky oak and birch trees with flowers on the left and right sides, distant cubic hills and a small river, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "pixel/bg_night",
+  "seed": 1009225530,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, calm night, deep blue starry sky, big glowing moon, fireflies, soft blue moonlight, small warm lanterns, 3D voxel art landscape made of tiny cubes, soft global illumination, tilt-shift depth of field, vibrant colors, cute, highly detailed, a flat open grassy clearing in the lower center foreground, blocky oak and birch trees with flowers on the left and right sides, distant cubic hills and a small river, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "poney/bg_day",
+  "seed": 2097939149,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, bright sunny day, blue sky with fluffy clouds, warm morning sunlight, soft 3D render in the style of a modern animated movie, kawaii, pastel colors, gentle cinematic lighting, highly detailed, an empty riding school paddock, soft sandy ground in the lower center foreground, white wooden fences on the sides, a cute red wooden stable with flower boxes in the background, rolling green hills, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "poney/bg_eve",
+  "seed": 86025133,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, golden sunset, orange and pink sky, long soft shadows, warm evening light, soft 3D render in the style of a modern animated movie, kawaii, pastel colors, gentle cinematic lighting, highly detailed, an empty riding school paddock, soft sandy ground in the lower center foreground, white wooden fences on the sides, a cute red wooden stable with flower boxes in the background, rolling green hills, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
+ },
+ {
+  "id": "poney/bg_night",
+  "seed": 528827221,
+  "prompt": "wide empty landscape, no characters, no animals, no creatures, no horses, no people, nothing in the center foreground, eye-level camera, calm night, deep blue starry sky, big glowing moon, fireflies, soft blue moonlight, small warm lanterns, soft 3D render in the style of a modern animated movie, kawaii, pastel colors, gentle cinematic lighting, highly detailed, an empty riding school paddock, soft sandy ground in the lower center foreground, white wooden fences on the sides, a cute red wooden stable with flower boxes in the background, rolling green hills, no text, no letters, no numbers, no watermark, no border, no frame, no card layout"
  }
 ]

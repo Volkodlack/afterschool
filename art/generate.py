@@ -31,7 +31,7 @@ for p in prompts:
         continue
     todo.append(p)
 # ordre : d'abord les cartes de quête et les dorées, puis le reste (alterné entre les deux mondes)
-todo.sort(key=lambda p: (0 if '/q' in p['id'] else 1, p['id'].split('/')[1], p['id']))
+todo.sort(key=lambda p: (-1 if '/bg_' in p['id'] else 0 if '/q' in p['id'] else 1, p['id'].split('/')[1], p['id']))
 print(f'{len(todo)} illustrations à faire, limite {a.limit}')
 
 done = fails = 0
@@ -51,10 +51,10 @@ while queue:
         if not b64:
             raise RuntimeError(json.dumps(res)[:300])
         im = Image.open(io.BytesIO(base64.b64decode(b64))).convert('RGB')
-        im.thumbnail((640, 640))
+        im.thumbnail((1280, 1280) if '/bg_' in p['id'] else (640, 640))
         out = os.path.join(HERE, p['id'] + '.webp')
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        im.save(out, 'WEBP', quality=80, method=6)
+        im.save(out, 'WEBP', quality=84 if '/bg_' in p['id'] else 80, method=6)
         done += 1; fails = 0
         print('ok', p['id'], os.path.getsize(out) // 1024, 'Ko', flush=True)
     except urllib.error.HTTPError as e:
