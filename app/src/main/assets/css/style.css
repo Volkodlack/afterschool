@@ -1469,3 +1469,4 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .pet-scene.has-bg .night-sky { background: none; }
 .pet-scene.has-bg.bg-night .night-sky .moon { display: none; }
 .pet-scene.has-bg::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 60%, rgba(0,0,0,.18)); }
+.pet.p3, .theme-poney .pet.p3 { height: 70%; } .pet.p3.stage-1, .theme-poney .pet.p3.stage-1 { height: 62%; } .pet.p3.stage-3, .theme-poney .pet.p3.stage-3 { height: 78%; }
