@@ -13,11 +13,12 @@
       STAGED.forEach(k => [1, 2, 3].forEach(st => { o[k + st] = { file: k + st, ownEyes: true, neck: { r: 1.1 }, acc: { renard: .82, lapin: .8, mouton: .72, chat: .8, slime: .78, dragon: .8 }[k], yaw: { lapin: .4, slime: .3, dragon: .45 }[k] || .55, anims: A }; }));
       return o;
     })(),
-    poney:   { file: 'poney', neck: { r: 1.15 }, acc: 1.15, yaw: .55, ownBlaze: true, ownEyes: true, wing: .62, anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' } },
+    ...Object.fromEntries([1, 2, 3].map(st => ['poney' + st, { file: 'poney' + st, neck: { r: 1.15 }, acc: [1.25, 1.15, 1.05][st - 1], yaw: .55, ownBlaze: true, ownEyes: true,
+      wing: [.5, .62, .9][st - 1], horn: [.55, 1, 1.35][st - 1], anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' } }])),
   };
   const PONY = ['poney', 'licorne', 'pegase', 'poulain', 'nuit', 'tachete'];
   function modelKey(p) {
-    if (PONY.includes(p.species)) return 'poney';
+    if (PONY.includes(p.species)) return 'poney' + Math.min(3, Math.max(1, p.stage || 1));
     if (STAGED.includes(p.species)) return p.species + Math.min(3, Math.max(1, p.stage || 1));
     return M[p.species] ? p.species : null;
   }
@@ -273,6 +274,8 @@
       const m = mats[0];
       if (pc && pc.rainbow && m.name === 'Hair') rainbow(o, m);
       if (pc && pc.spots && m.name === 'Main') spots(o, m, pc.spots, pc.Main);
+      // cheval noir adulte : crinière étoilée qui luit doucement
+      if (p.species === 'nuit' && p.stage === 3 && m.name === 'Hair') { m.color.set('#3a2a6a'); m.emissive.set('#6a5cb8'); m.emissiveIntensity = .45; }
     });
     let skin = null;
     scene.traverse(o => { if (!skin && o.isMesh) { const m = [].concat(o.material)[0]; if (!/eye/i.test(m.name)) skin = m.color.clone(); } });
@@ -287,7 +290,7 @@
     const headTop = new THREE.Vector3(hc.x, hb.max.y - hs.y * .12, hc.z - hs.z * .05);
     accs.forEach(id => {
       if (id === 'sparkle' || id === 'rainbow') return;
-      if (id === 'horn') { const h = buildHorn(); h.rotation.x = .55; attach(h, info.headBone, new THREE.Vector3(hc.x, hb.max.y - hs.y * .22, hc.z + hs.z * .18), unit * 1.5); return; }
+      if (id === 'horn') { const h = buildHorn(); h.rotation.x = .55; attach(h, info.headBone, new THREE.Vector3(hc.x, hb.max.y - hs.y * .22, hc.z + hs.z * .18), unit * 1.5 * (cfg.horn || 1)); return; }
       if (id === 'wings') { const w = buildWings(pc && pc.Main); const bb = info.boxes.body; const bc = bb.getCenter(new THREE.Vector3()); attach(w, info.bodyBone, new THREE.Vector3(bc.x, bb.max.y - (bb.max.y - bb.min.y) * .08, bc.z + (bb.max.z - bb.min.z) * .18), (bb.max.x - bb.min.x) * 1.9 * (cfg.wing || 1)); wings.push(...w.userData.wings); return; }
       if (/glasses|eyepatch/.test(id)) {
         const eb = info.boxes.eyes.isEmpty() ? null : info.boxes.eyes;

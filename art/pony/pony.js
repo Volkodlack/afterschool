@@ -1,7 +1,22 @@
-/* Poney kawaii fait main : géométrie, squelette et animations, exporté en poney.glb (voir export.py).
-   Repère : y en haut, le poney regarde vers +z, sol en y = 0. Chaque pièce est rigide (un seul os). */
-export function buildPony(THREE, { mergeGeometries }) {
+/* Poney kawaii fait main : géométrie, squelette et animations, exporté en poney1-3.glb (voir export.py).
+   Repère : y en haut, le poney regarde vers +z, sol en y = 0. Chaque pièce est rigide (un seul os).
+   3 stades : 1 poulain (grosse tête, petit corps, houppette), 2 poney, 3 adulte élancé (longue crinière, rubans, fleurs).
+   Les pièces sont dessinées au gabarit du stade 2 puis déformées par groupe d'os (corps, cou, tête, pattes). */
+export function buildPony(THREE, { mergeGeometries }, st = 2) {
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const P = [null,
+    { S: [.82, .8, .78], legK: 1.0, legR: .8, HS: 1.42, neck: -.04 },
+    { S: [1, 1, 1], legK: 1, legR: 1, HS: 1.2, neck: 0 },
+    { S: [1.02, 1, 1.12], legK: 1.22, legR: 1, HS: 1.06, neck: .22 }][st];
+  /* déformation du gabarit : corps mis à l'échelle autour de son centre puis posé sur des pattes plus ou moins longues */
+  const C = V(0, 1.24, 0), legTop = 1.1 * P.legK, cy = legTop + .14 * P.S[1], dy = cy - C.y;
+  const body = v => V(v.x * P.S[0], C.y + (v.y - C.y) * P.S[1] + dy, v.z * P.S[2]);
+  const NB = V(0, 1.62, .52), nb = body(NB), nk = 1 + P.neck / .5;
+  const neck = v => { const w = body(v); return V(w.x, nb.y + (w.y - nb.y) * nk, w.z); };
+  const HP0 = V(0, 2.12, .78), HP1 = neck(HP0);
+  const head = v => v.clone().sub(HP0).multiplyScalar(P.HS).add(HP1);
+  const leg = (v, x0, z0) => V(x0 * P.S[0] + (v.x - x0) * P.legR, v.y * P.legK, z0 * P.S[2] + (v.z - z0) * P.legR);
+  const GROUP = { Body: body, Torso: body, Tail1: body, Tail2: body, Neck1: neck, Head: head, EarL: head, EarR: head };
 
   /* ---------- squelette ---------- */
   const bones = {};
@@ -11,27 +26,28 @@ export function buildPony(THREE, { mergeGeometries }) {
     if (parent) { b.position.copy(wp.clone().sub(bones[parent].userData.wp)); bones[parent].add(b); } else b.position.copy(wp);
     b.userData.wp = wp; bones[name] = b; return b;
   };
-  bone('Body', null, V(0, 1.22, 0));
-  bone('Torso', 'Body', V(0, 1.22, 0));
-  bone('Neck1', 'Torso', V(0, 1.62, .52));
-  bone('Head', 'Neck1', V(0, 2.12, .78));
-  const hs = v => v.sub(V(0, 2.12, .78)).multiplyScalar(1.2).add(V(0, 2.12, .78));
-  bone('EarL', 'Head', hs(V(.36, 3.08, .62)));
-  bone('EarR', 'Head', hs(V(-.36, 3.08, .62)));
-  bone('LegFL', 'Torso', V(.3, 1.02, .46));
-  bone('LegFR', 'Torso', V(-.3, 1.02, .46));
-  bone('LegBL', 'Torso', V(.3, 1.02, -.46));
-  bone('LegBR', 'Torso', V(-.3, 1.02, -.46));
-  bone('Tail1', 'Torso', V(0, 1.5, -.78));
-  bone('Tail2', 'Tail1', V(0, 1.28, -1.12));
+  bone('Body', null, body(V(0, 1.22, 0)));
+  bone('Torso', 'Body', body(V(0, 1.22, 0)));
+  bone('Neck1', 'Torso', body(NB));
+  bone('Head', 'Neck1', HP1);
+  bone('EarL', 'Head', head(V(.36, 3.08, .62)));
+  bone('EarR', 'Head', head(V(-.36, 3.08, .62)));
+  bone('LegFL', 'Torso', V(.3 * P.S[0], legTop - .08, .46 * P.S[2]));
+  bone('LegFR', 'Torso', V(-.3 * P.S[0], legTop - .08, .46 * P.S[2]));
+  bone('LegBL', 'Torso', V(.3 * P.S[0], legTop - .08, -.46 * P.S[2]));
+  bone('LegBR', 'Torso', V(-.3 * P.S[0], legTop - .08, -.46 * P.S[2]));
+  bone('Tail1', 'Torso', body(V(0, 1.5, -.78)));
+  bone('Tail2', 'Tail1', body(V(0, 1.28, -1.12)));
   const order = Object.keys(bones);
   const idx = n => order.indexOf(n);
 
   /* ---------- pièces ---------- */
   const parts = {}; // matériau -> [géométries]
-  const HEAD = ['Head', 'EarL', 'EarR'], HP = V(0, 2.12, .78), HS = 1.2; // tête agrandie autour de sa base
+  const LEGS = { LegFL: [.3, .46], LegFR: [-.3, .46], LegBL: [.3, -.46], LegBR: [-.3, -.46] };
   function put(matName, geo, boneName) {
-    if (HEAD.includes(boneName)) geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-HP.x, -HP.y, -HP.z)).applyMatrix4(new THREE.Matrix4().makeScale(HS, HS, HS)).applyMatrix4(new THREE.Matrix4().makeTranslation(HP.x, HP.y, HP.z));
+    const pos = geo.attributes.position, v = V(0, 0, 0), f = LEGS[boneName] ? (w => leg(w, ...LEGS[boneName])) : GROUP[boneName];
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); const w = f(v); pos.setXYZ(i, w.x, w.y, w.z); }
+    geo.computeVertexNormals();
     const n = geo.attributes.position.count;
     const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) { si[i * 4] = idx(boneName); sw[i * 4] = 1; }
@@ -101,18 +117,37 @@ export function buildPony(THREE, { mergeGeometries }) {
   hair([.3, 2.95, .55], [.18, .3, .2], [0, 0, -.5]);
   hair([-.3, 2.95, .55], [.18, .3, .2], [0, 0, .5]);
   hair([0, 2.9, .3], [.26, .3, .22], [.3, 0, 0]);
-  hair([.36, 2.75, .38], [.2, .36, .24], [.2, 0, -.35]);
-  hair([-.36, 2.75, .38], [.2, .36, .24], [.2, 0, .35]);
-  hair([.42, 2.5, .5], [.15, .32, .2], [.1, 0, -.15]);
-  hair([-.42, 2.5, .5], [.15, .32, .2], [.1, 0, .15]);
+  if (st >= 2) {
+    hair([.36, 2.75, .38], [.2, .36, .24], [.2, 0, -.35]);
+    hair([-.36, 2.75, .38], [.2, .36, .24], [.2, 0, .35]);
+    hair([.42, 2.5, .5], [.15, .32, .2], [.1, 0, -.15]);
+    hair([-.42, 2.5, .5], [.15, .32, .2], [.1, 0, .15]);
+  }
   hair([.1, 3.15, .95], [.24, .16, .26], [.3, 0, -.3]);
-  [[2.55, .22, .28], [2.2, .1, .26], [1.85, -.02, .24], [1.6, -.12, .2]].forEach(([y, z, w]) => {
+  if (st === 1) { // houppette de poulain
+    hair([0, 3.3, .82], [.22, .22, .22]); hair([.12, 3.38, .7], [.14, .16, .14]); hair([-.1, 3.36, .66], [.13, .15, .13]);
+  }
+  const neckMane = st === 1 ? [[2.55, .22, .24], [2.2, .1, .2]] : [[2.55, .22, .28], [2.2, .1, .26], [1.85, -.02, .24], [1.6, -.12, .2]];
+  neckMane.forEach(([y, z, w]) => {
     hair([.16, y, z], [w * .6, .3, w], [.3, 0, -.2], 'Neck1');
     hair([-.16, y, z], [w * .6, .3, w], [.3, 0, .2], 'Neck1');
   });
-  // queue : longue et touffue
-  [[1.52, -.86, .2], [1.4, -1.0, .24], [1.22, -1.12, .26]].forEach(([y, z, r]) => hair([0, y, z], [r, r * 1.1, r], [0, 0, 0], 'Tail1'));
-  [[1.0, -1.2, .26], [.78, -1.22, .23], [.58, -1.18, .17]].forEach(([y, z, r]) => hair([0, y, z], [r * 1.05, r * 1.25, r], [0, 0, 0], 'Tail2'));
+  if (st === 3) {
+    // longue crinière qui retombe sur l'épaule et longue mèche sur le front
+    [[2.35, .32, .26], [2.0, .3, .26], [1.65, .28, .24], [1.35, .3, .2]].forEach(([y, z, w], i) => hair([.3 + i * .03, y, z], [w * .55, .34, w * .8], [.15, 0, -.3], 'Neck1'));
+    [[2.4, .12, .24], [2.05, .05, .24], [1.7, -.02, .22]].forEach(([y, z, w]) => hair([-.3, y, z], [w * .55, .32, w * .8], [.15, 0, .3], 'Neck1'));
+    hair([.12, 2.86, 1.22], [.16, .26, .14], [.5, 0, -.3]);
+    // rubans et fleurs dans la crinière
+    const bow = (p, b) => { put('Ribbon', ell([p[0] + .1, p[1], p[2]], [.1, .07, .04], [0, .3, -.4]), b); put('Ribbon', ell([p[0] - .1, p[1], p[2]], [.1, .07, .04], [0, -.3, .4]), b); put('Ribbon', ell(p, [.045, .045, .045]), b); };
+    bow([-.5, 1.75, .3], 'Neck1'); bow([-.48, 2.9, .62], 'Head');
+    const flower = (p, b) => { for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; put('Flower', ell([p[0] + Math.cos(a) * .07, p[1] + Math.sin(a) * .07, p[2]], [.055, .055, .03]), b); } put('Ribbon', ell([p[0], p[1], p[2] + .02], [.035, .035, .03]), b); };
+    flower([-.24, 3.1, 1.0], 'Head'); flower([-.5, 2.2, .3], 'Neck1'); flower([.3, 3.05, .9], 'Head');
+  }
+  // queue : pompon (poulain), touffue (poney), jusqu'au sol (adulte)
+  const tailA = st === 1 ? [[1.52, -.86, .2], [1.4, -.98, .22]] : [[1.52, -.86, .2], [1.4, -1.0, .24], [1.22, -1.12, .26]];
+  tailA.forEach(([y, z, r]) => hair([0, y, z], [r, r * 1.1, r], [0, 0, 0], 'Tail1'));
+  const tailB = st === 1 ? [] : st === 2 ? [[1.0, -1.2, .26], [.78, -1.22, .23], [.58, -1.18, .17]] : [[1.0, -1.2, .27], [.78, -1.23, .26], [.56, -1.24, .24], [.36, -1.22, .22], [.2, -1.18, .18]];
+  tailB.forEach(([y, z, r]) => hair([0, y, z], [r * 1.05, r * 1.25, r], [0, 0, 0], 'Tail2'));
 
   /* ---------- maillages ---------- */
   const root = new THREE.Group(); root.name = 'Pony';
@@ -120,7 +155,7 @@ export function buildPony(THREE, { mergeGeometries }) {
   arm.add(bones.Body);
   root.updateMatrixWorld(true);
   const skeleton = new THREE.Skeleton(order.map(n => bones[n]));
-  const COL = { Main: '#d08a52', Main_Light: '#e9b07c', Main_Dark: '#b06e3a', Socks: '#fff6ea', Hooves: '#6a4a3e', Muzzle: '#f8cfc4', Blaze: '#ffffff', Nose: '#3a2420', Hair: '#7a4528', Eye_White: '#ffffff', Eye_Black: '#5a3420', Eye_Black_Pupil: '#140a08' };
+  const COL = { Main: '#d08a52', Main_Light: '#e9b07c', Main_Dark: '#b06e3a', Socks: '#fff6ea', Hooves: '#6a4a3e', Muzzle: '#f8cfc4', Blaze: '#ffffff', Nose: '#3a2420', Hair: '#7a4528', Eye_White: '#ffffff', Eye_Black: '#5a3420', Eye_Black_Pupil: '#140a08', Ribbon: '#ffc93c', Flower: '#ffffff' };
   for (const [name, geos] of Object.entries(parts)) {
     const geo = mergeGeometries(geos, false);
     const m = new THREE.MeshStandardMaterial({ name, color: COL[name] || '#ffffff', roughness: .6 });

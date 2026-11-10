@@ -1,5 +1,5 @@
 """Exporte les compagnons faits main (pony.js, critters.js) en app/src/main/assets/models/pets/*.glb :
-poney.glb, renard1-3.glb, lapin1-3.glb, mouton1-3.glb.
+poney1-3.glb, chat1-3.glb, slime1-3.glb, dragon1-3.glb, renard1-3.glb, lapin1-3.glb, mouton1-3.glb.
 Usage : python3 export.py <dossier contenant node_modules/three> [noms…]   (npm i three@0.170.0)"""
 import base64, functools, http.server, os, shutil, sys, tempfile, threading
 from playwright.sync_api import sync_playwright
@@ -19,7 +19,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { buildPony } from './pony.js';
 import { CRITTERS } from './critters.js';
 const U = { mergeGeometries };
-const jobs = [['poney', () => buildPony(THREE, U)]];
+const jobs = [1, 2, 3].map(st => ['poney' + st, () => buildPony(THREE, U, st)]);
 for (const [k, f] of Object.entries(CRITTERS)) for (const st of [1, 2, 3]) jobs.push([k + st, () => f(THREE, U, st)]);
 const only = ONLY_LIST;
 window.out = {};
