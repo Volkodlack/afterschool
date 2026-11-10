@@ -13,7 +13,11 @@ window.AS_REQUIRED_NATIVE_API = 2;
   // appliquée dès qu'on revient à l'accueil
   const go = UI.go.bind(UI);
   UI.go = (name, params, opts) => {
-    if (otaPending && (name === 'home' || name === 'profiles') && !document.querySelector('.modal')) { otaPending = false; N.reloadApp(); return; }
+    if (otaPending && (name === 'home' || name === 'profiles') && !document.querySelector('.modal')) {
+      // l'enfant venait de choisir son prénom : on le garde pour arriver directement à l'accueil après le rechargement
+      if (name === 'home') { Store.global.justPicked = Store.currentId(); Store.saveGlobal(); }
+      otaPending = false; N.reloadApp(); return;
+    }
     return go(name, params, opts);
   };
   AS.updateStatus = (s) => {

@@ -201,7 +201,7 @@
   if (G.justPicked) { G.justPicked = null; Store.saveGlobal(); }
   if (!Store.data.settings.onboarded) UI.go('welcome', {});
   else if (!Store.data.settings.theme) UI.go('welcome', { themeOnly: true });
-  else if (picked) UI.go('home');
+  else if (picked || Store.profiles().length === 1) UI.go('home'); // un seul enfant : pas besoin de choisir
   else UI.go('profiles');
   // l'appli a bien démarré : la mise à jour du contenu est validée
   setTimeout(() => window.AppUpdate && AppUpdate.confirm(), 2500);
