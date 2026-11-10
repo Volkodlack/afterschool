@@ -19,11 +19,11 @@
                colors: { Dragon_Main: '#8a5ad0', Dragon_Secondary: '#ffd86b', Dragon_Horn: '#fff4d6' } },
     mouton:  { file: 'mouton', neck: { r: 1.35 }, acc: 1.4, yaw: .62, anims: { idle: 'Idle', jump: 'Jump', happy: 'Jump', eat: null, sad: null, wash: null },
                colors: { White: '#fbf7f0', Black: '#4a3b35' } },
-    cheval:  { file: 'cheval', neck: { r: 1.25 }, acc: 1.3, yaw: .62, anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' } }
+    poney:   { file: 'poney', neck: { r: 1.15 }, acc: 1.15, yaw: .55, ownBlaze: true, ownEyes: true, wing: .62, anims: { idle: 'Idle', idle2: 'Idle_2', sad: 'Idle_Headlow', eat: 'Eating', jump: 'Gallop_Jump', happy: 'Jump_toIdle', wash: 'Idle_HitReact1' } },
   };
   const PONY = ['poney', 'licorne', 'pegase', 'poulain', 'nuit', 'tachete'];
   function modelKey(p) {
-    if (PONY.includes(p.species)) return 'cheval';
+    if (PONY.includes(p.species)) return 'poney';
     if (p.species === 'dragon' && p.stage === 3) return 'dragon2';
     return M[p.species] ? p.species : null;
   }
@@ -248,12 +248,12 @@
 
   /* ---------- couleurs des poneys ---------- */
   const PONY_COL = {
-    poney:   { Main: '#e8a66b', Main_Dark: '#c9844c', Main_Light: '#f2c08f', Hair: '#ff8fb1', Muzzle: '#fff1e0', Hooves: '#8a5a4a', blaze: true },
-    licorne: { Main: '#ffffff', Main_Dark: '#efe6f2', Main_Light: '#ffffff', Hair: '#ff8fb1', Muzzle: '#fff0f5', Hooves: '#c49bf0', rainbow: true, horn: true },
-    pegase:  { Main: '#ece6fa', Main_Dark: '#d2c6ee', Main_Light: '#f6f2ff', Hair: '#7ec8f5', Muzzle: '#faf6ff', Hooves: '#9c70d0', wings: true },
-    poulain: { Main: '#c98a5c', Main_Dark: '#a46a40', Main_Light: '#ddb08a', Hair: '#5a3a2a', Muzzle: '#f6dcc4', Hooves: '#5a3a2a', blaze: true },
-    nuit:    { Main: '#4a3a46', Main_Dark: '#33262f', Main_Light: '#6a5866', Hair: '#1e1520', Muzzle: '#b8a0ae', Hooves: '#2b1d26', blaze: true },
-    tachete: { Main: '#f2d6a8', Main_Dark: '#d9b880', Main_Light: '#fbe8c8', Hair: '#ffffff', Muzzle: '#fff6e6', Hooves: '#8a5a4a', spots: '#8a5a3c' }
+    poney:   { Main: '#e8a66b', Main_Dark: '#c9844c', Main_Light: '#f2c08f', Hair: '#ff8fb1', Muzzle: '#f6cfc0', Hooves: '#8a5a4a', Socks: '#fff6ea', Eye_Black: '#6a3a20', blaze: true },
+    licorne: { Main: '#ffffff', Main_Dark: '#efe6f2', Main_Light: '#ffffff', Hair: '#ff8fb1', Muzzle: '#ffdbe6', Hooves: '#c49bf0', Socks: '#ffffff', Eye_Black: '#7a52b8', rainbow: true, horn: true },
+    pegase:  { Main: '#ece6fa', Main_Dark: '#d2c6ee', Main_Light: '#f6f2ff', Hair: '#7ec8f5', Muzzle: '#f0e0f6', Hooves: '#9c70d0', Socks: '#ffffff', Eye_Black: '#3a72c0', wings: true },
+    poulain: { Main: '#c98a5c', Main_Dark: '#a46a40', Main_Light: '#ddb08a', Hair: '#5a3a2a', Muzzle: '#f0c8b4', Hooves: '#5a3a2a', Socks: '#fff1e0', Eye_Black: '#4a2c1a', blaze: true },
+    nuit:    { Main: '#4a3a46', Main_Dark: '#33262f', Main_Light: '#6a5866', Hair: '#1e1520', Muzzle: '#b8a0ae', Hooves: '#2b1d26', Socks: '#d8c8d2', Eye_Black: '#8a6ad0', blaze: true },
+    tachete: { Main: '#f2d6a8', Main_Dark: '#d9b880', Main_Light: '#fbe8c8', Hair: '#ffffff', Muzzle: '#f8d8c8', Hooves: '#8a5a4a', Socks: '#ffffff', Eye_Black: '#6a3a20', spots: '#8a5a3c' }
   };
 
   /* ---------- construction d'une instance ---------- */
@@ -269,10 +269,10 @@
       o.frustumCulled = false;
       const mats = [].concat(o.material).map(m0 => {
         const m = m0.clone(); m.roughness = .62; m.metalness = 0;
-        const want = (pc && pc[m.name]) || (cfg.colors && cfg.colors[m.name]);
+        const want = (pc && pc[m.name]) || (cfg.colors && cfg.colors[m.name]) || (pc && m.name === 'Blaze' && !pc.blaze && pc.Main) || (pc && m.name === 'Socks' && pc.Main_Light);
         if (want) m.color.set(want);
         if (/eye_white/i.test(m.name)) { m.color.set('#ffffff'); m.roughness = .2; eyeMats.push(m); }
-        if (/eye_black/i.test(m.name)) { m.color.set('#141018'); m.roughness = .1; eyeMats.push(m); }
+        if (/eye_black/i.test(m.name)) { if (!cfg.ownEyes) m.color.set('#141018'); m.roughness = .1; eyeMats.push(m); }
         return m;
       });
       o.material = Array.isArray(o.material) ? mats : mats[0];
@@ -294,7 +294,7 @@
     accs.forEach(id => {
       if (id === 'sparkle' || id === 'rainbow') return;
       if (id === 'horn') { const h = buildHorn(); h.rotation.x = .55; attach(h, info.headBone, new THREE.Vector3(hc.x, hb.max.y - hs.y * .22, hc.z + hs.z * .18), unit * 1.5); return; }
-      if (id === 'wings') { const w = buildWings(pc && pc.Main); const bb = info.boxes.body; const bc = bb.getCenter(new THREE.Vector3()); attach(w, info.bodyBone, new THREE.Vector3(bc.x, bb.max.y - (bb.max.y - bb.min.y) * .08, bc.z + (bb.max.z - bb.min.z) * .18), (bb.max.x - bb.min.x) * 1.9); wings.push(...w.userData.wings); return; }
+      if (id === 'wings') { const w = buildWings(pc && pc.Main); const bb = info.boxes.body; const bc = bb.getCenter(new THREE.Vector3()); attach(w, info.bodyBone, new THREE.Vector3(bc.x, bb.max.y - (bb.max.y - bb.min.y) * .08, bc.z + (bb.max.z - bb.min.z) * .18), (bb.max.x - bb.min.x) * 1.9 * (cfg.wing || 1)); wings.push(...w.userData.wings); return; }
       if (/glasses|eyepatch/.test(id)) {
         const eb = info.boxes.eyes.isEmpty() ? null : info.boxes.eyes;
         const ec = eb ? eb.getCenter(new THREE.Vector3()) : new THREE.Vector3(hc.x, hc.y + hs.y * .1, hb.max.z - hs.z * .25);
@@ -343,7 +343,7 @@
         eyeMats.push(pm, hm);
       });
     }
-    if (pc && pc.blaze && !accs.some(a => /glasses|eyepatch/.test(a))) {
+    if (pc && pc.blaze && !cfg.ownBlaze && !accs.some(a => /glasses|eyepatch/.test(a))) {
       const bl = mesh(new THREE.SphereGeometry(.5, 16, 10), mat('#ffffff'), 0, 0, [.22, .3, .08]);
       attach(bl, info.headBone, new THREE.Vector3(hc.x, hc.y + hs.y * .05, hb.max.z - hs.z * .28), unit);
       bl.parent.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-.9, 0, 0)));
