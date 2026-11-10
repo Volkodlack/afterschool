@@ -448,7 +448,7 @@
       inst.eyeMats.forEach(m => { if (!m.userData.c0) m.userData.c0 = m.color.clone(); m.color.copy(shut ? (m.userData.skin || (m.userData.skin = skinColor(inst))) : m.userData.c0); });
       inst.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * (Math.sin(t * (one ? 14 : 3)) * (one ? .5 : .18) - .1); });
     }
-    return { setBase, play, update, blink() { eyesShut = t + .14; }, get t() { return t; } };
+    return { setBase, play, update, blink() { eyesShut = t + .14; }, get t() { return t; }, get baseKey() { return baseKey; } };
   }
   function skinColor(inst) { return inst.skin || new window.T3.THREE.Color('#d9c2a8'); }
 
@@ -605,6 +605,8 @@
       dispose() { views.delete(v); if (ro) ro.disconnect(); dispose(sc); r.dispose(); try { r.forceContextLoss(); } catch (e) {} },
       mood(m) {
         if (m === 'blink') return an.blink();
+        /* réveillé (touché la nuit) : on quitte la pose de sommeil, sinon il garderait les yeux fermés */
+        if ((m === 'eat' || m === 'happy') && an.baseKey === 'sleep') an.setBase('idle');
         if (m === 'eat') return an.play('eat');
         if (m === 'happy') return an.play('happy');
         an.setBase(m === 'sad' ? 'sad' : m === 'sleep' ? 'sleep' : 'idle');
