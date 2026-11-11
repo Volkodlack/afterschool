@@ -28,7 +28,7 @@ import java.util.zip.ZipInputStream
 class Updater(private val ctx: Context, private val emit: (String) -> Unit) {
     companion object {
         /** À augmenter à chaque changement du code Android (pont JS, Kotlin/Java, bibliothèques, modèles). */
-        const val NATIVE_API = 2
+        const val NATIVE_API = 3
         const val SITE = "https://afterschool.sinisterkid.win/"
         const val RELEASES = "https://api.github.com/repos/Volkodlack/afterschool/releases/latest"
     }
