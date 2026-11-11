@@ -113,9 +113,9 @@
   try { const j = JSON.parse(localStorage.getItem('afterschool.art') || 'null'); if (j) loadIdx(j); } catch (e) {}
   fetch(ART_BASE + 'art/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
     .then(j => { if (j) { loadIdx(j); try { localStorage.setItem('afterschool.art', JSON.stringify(j)); } catch (e) {} } }).catch(() => {});
-  function photo(key) {
-    const s = ARTIDX && ARTIDX[Theme.id];
-    return s && s.has(key) ? ART_BASE + 'art/' + Theme.id + '/' + key + '.webp' : null;
+  function photo(key, world) {
+    const w = world || Theme.id, s = ARTIDX && ARTIDX[w];
+    return s && s.has(key) ? ART_BASE + 'art/' + w + '/' + key + '.webp' : null;
   }
   window.ArtPhoto = photo;
   // si l'image ne charge pas (hors connexion), on revient au dessin

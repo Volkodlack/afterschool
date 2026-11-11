@@ -294,7 +294,7 @@
     function setBackdrop() {
       const h = new Date().getHours() + new Date().getMinutes() / 60;
       const k = (sleeping() || isNight()) ? 'bg_night' : h >= 18 ? 'bg_eve' : 'bg_day';
-      const url = window.ArtPhoto && (ArtPhoto(k) || (k === 'bg_eve' && ArtPhoto('bg_day')));
+      const url = window.ArtPhoto && (ArtPhoto(k, 'pixel') || (k === 'bg_eve' && ArtPhoto('bg_day', 'pixel'))); // même décor pour les deux mondes
       if (v3) v3.light(k);
       if (!url || bgKey === url) return;
       bgKey = url;
