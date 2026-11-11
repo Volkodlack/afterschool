@@ -316,6 +316,60 @@
 
   /* ---------- collection screen ---------- */
   let filter = 'all', curSet = 1;
+  /* ---------- classeur : les cartes se feuillettent par pages (flèches ou glisser), jamais de défilement ---------- */
+  const pageOf = {};
+  function pager(grid, key) {
+    if (!grid) return () => {};
+    const cards = [...grid.children];
+    const box = el(`<div class="binder"><button class="pix-btn bnd-prev" aria-label="Page précédente">◀</button><div class="bnd-view"></div><button class="pix-btn bnd-next" aria-label="Page suivante">▶</button><div class="bnd-pages"></div></div>`);
+    grid.replaceWith(box);
+    const view = box.querySelector('.bnd-view'), dots = box.querySelector('.bnd-pages');
+    view.appendChild(grid); grid.classList.add('bnd-grid');
+    let per = 12, pages = 1, page = pageOf[key] || 0;
+    function layout() {
+      const W = view.clientWidth, H = view.clientHeight;
+      if (!W || !H) return;
+      const gap = W < 500 ? 6 : 12, minW = W < 500 ? 78 : 112;
+      let best = null;
+      // on cherche la grille (colonnes × lignes) qui donne les plus grandes cartes avec au moins 6 cartes par page
+      for (let cols = 2; cols <= 8; cols++) {
+        const cw = (W - gap * (cols - 1)) / cols; if (cw < minW && cols > 2) break;
+        const ch = cw * 88 / 63;
+        let rows = Math.floor((H + gap) / (ch + gap));
+        let w = cw;
+        if (rows < 1) { rows = 1; w = (H) * 63 / 88; }
+        const n = cols * rows;
+        const want = W < 500 ? 6 : 10; // assez de cartes par page pour que le classeur reste rapide à feuilleter
+        const score = n >= want ? w : w * n / want * .6;
+        if (!best || score > best.score) best = { cols, rows, w: Math.min(cw, (H - gap * (rows - 1)) / rows * 63 / 88), score };
+      }
+      grid.style.gridTemplateColumns = `repeat(${best.cols}, ${Math.floor(best.w)}px)`;
+      per = best.cols * best.rows;
+      pages = Math.max(1, Math.ceil(cards.length / per));
+      page = Math.min(page, pages - 1);
+      show();
+    }
+    function show() {
+      pageOf[key] = page;
+      cards.forEach((c, i) => { c.style.display = Math.floor(i / per) === page ? '' : 'none'; });
+      box.querySelector('.bnd-prev').disabled = page <= 0;
+      box.querySelector('.bnd-next').disabled = page >= pages - 1;
+      dots.textContent = pages > 1 ? `Page ${page + 1} / ${pages}` : '';
+      box.classList.toggle('single', pages <= 1);
+    }
+    const go = d => { const p2 = Math.max(0, Math.min(pages - 1, page + d)); if (p2 === page) return; page = p2; SFX.play('pop'); grid.classList.remove('flip-l', 'flip-r'); void grid.offsetWidth; grid.classList.add(d > 0 ? 'flip-l' : 'flip-r'); show(); };
+    box.querySelector('.bnd-prev').onclick = () => go(-1);
+    box.querySelector('.bnd-next').onclick = () => go(1);
+    // glisser le doigt pour tourner la page
+    let x0 = null, y0 = 0;
+    view.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; });
+    view.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) { go(dx < 0 ? 1 : -1); view._swiped = Date.now(); } });
+    view.addEventListener('click', e => { if (view._swiped && Date.now() - view._swiped < 300) { e.stopPropagation(); e.preventDefault(); } }, true);
+    const ro = window.ResizeObserver ? new ResizeObserver(layout) : null;
+    if (ro) ro.observe(view);
+    requestAnimationFrame(layout);
+    return () => ro && ro.disconnect();
+  }
   UI.register('cards', (root) => {
     UI.setTitle('Mes cartes');
     const st = state();
@@ -325,33 +379,37 @@
     const n = opened();
     const SET = SETS[curSet] || SETS[1];
     const ownIn = k => CARDS.filter(c => c.set === k && st.owned[c.id]).length;
-    const wrap = el(html`<div class="center-col">
+    const wrap = el(html`<div class="cards-page">
       <div class="booster-bar panel">
         <div class="pack-mini">${packHTML()}</div>
-        <div style="flex:1;min-width:220px">
-          <div style="font-size:clamp(20px,3.4vmin,32px);font-weight:700">Ma collection : ${own} / ${CARDS.length}</div>
+        <div class="bb-info">
+          <div class="bb-title"><span class="bb-long">Ma collection : </span>${own} / ${CARDS.length}<span class="bb-short"> cartes</span></div>
           <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
-          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n >= WEEK_MAX ? `Tu as ouvert ${WEEK_MAX} boosters cette semaine, c'est le maximum. Rendez-vous lundi !` : n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix double à chaque fois. Il redescend lundi !` : `Le prix double à chaque booster ouvert dans la semaine (${WEEK_MAX} au maximum).`}</div>
+          <div class="bb-sub">${n >= WEEK_MAX ? `${WEEK_MAX} boosters ouverts cette semaine : rendez-vous lundi !` : n < WEEK_MAX && gems < price ? `Encore ${price - gems} ${Theme.t.cur} à gagner pour le prochain booster` : n ? `Le prix double à chaque booster de la semaine (${n} ouvert${n > 1 ? 's' : ''})` : `Le prix double à chaque booster de la semaine`}</div>
         </div>
-        <button class="pix-btn gold big" data-a="open" ${gems >= price && n < WEEK_MAX ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price} ${Theme.t.cur}</span></button>
+        <button class="pix-btn gold" data-a="open" ${gems >= price && n < WEEK_MAX ? '' : 'disabled'}>Ouvrir<br><span class="bb-price"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price}</span></button>
       </div>
-      ${n < WEEK_MAX && gems < price ? `<p class="prompt">Encore ${price - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
-      <div class="tabs set-tabs" style="margin-top:var(--gap)">
+      <div class="tabs set-tabs">
         ${[1, 2].map(k => `<button class="pix-btn ${curSet === k ? 'on' : ''}" data-set="${k}">${SETS[k].name} <small>${ownIn(k)}/100</small></button>`).join('')}
         ${window.Quests ? `<button class="pix-btn ${curSet === 'q' ? 'on' : ''} quest-tab" data-set="q">🏆 Quêtes <small>${Quests.ownedCount()}/${Quests.QCARDS.length}</small></button>` : ''}
       </div>
-      <div class="tabs" ${curSet === 'q' ? 'style="display:none"' : ''}>
-        <button class="pix-btn small ${filter === 'all' ? 'on' : ''}" data-f="all">Toutes</button>
-        ${Object.entries(SET.EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}"><span style="width:1.1em;display:inline-flex">${SET.icon(k)}</span>${e.name}</button>`).join('')}
-        <button class="pix-btn small ${filter === 'or' ? 'on' : ''}" data-f="or">♛ Dorées</button>
+      <div class="tabs el-tabs" ${curSet === 'q' ? 'style="display:none"' : ''}>
+        <button class="pix-btn small ${filter === 'all' ? 'on' : ''}" data-f="all"><span class="el-all">Toutes</span><span class="el-all-s">Tout</span></button>
+        ${Object.entries(SET.EL).map(([k, e]) => `<button class="pix-btn small ${filter === k ? 'on' : ''}" data-f="${k}" title="${esc(e.name)}"><span style="width:1.1em;display:inline-flex">${SET.icon(k)}</span><span class="el-name">${e.name}</span></button>`).join('')}
+        <button class="pix-btn small ${filter === 'or' ? 'on' : ''}" data-f="or">♛<span class="el-name"> Dorées</span></button>
       </div>
       <div class="album"></div></div>`);
     root.appendChild(wrap);
-    const album = wrap.querySelector('.album');
-    if (curSet === 'q') { album.replaceWith(el('<div data-z="qalbum"></div>')); Quests.album(wrap.querySelector('[data-z=qalbum]')); }
+    root.classList.add('full', 'fit');
+    let album = wrap.querySelector('.album');
+    if (curSet === 'q') {
+      const qa = el('<div data-z="qalbum"></div>'); album.replaceWith(qa); Quests.album(qa);
+      album = qa.querySelector('.quest-album');
+      qa.classList.add('qalbum-wrap');
+    }
     const list = curSet === 'q' ? [] : CARDS.filter(c => c.set === curSet && (filter === 'all' || c.el === filter || (filter === 'or' && c.rar === 'or')));
-    album.innerHTML = list.map(c => st.owned[c.id] ? cardHTML(c, { count: st.owned[c.id] }) : missingHTML(c)).join('');
-    album.querySelectorAll('.tcard').forEach((nd, i) => {
+    if (curSet !== 'q') album.innerHTML = list.map(c => st.owned[c.id] ? cardHTML(c, { count: st.owned[c.id] }) : missingHTML(c)).join('');
+    if (curSet !== 'q') album.querySelectorAll('.tcard').forEach((nd, i) => {
       nd.style.animationDelay = Math.min(i * 0.02, .8) + 's';
       nd.onclick = () => {
         const c = CARDS[+nd.dataset.id - 1];
@@ -359,6 +417,7 @@
         zoom(c);
       };
     });
+    const stopPager = pager(album, curSet + ':' + filter);
     wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = b.dataset.set === 'q' ? 'q' : +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
     wrap.querySelector('[data-a=open]').onclick = async () => {
@@ -367,6 +426,7 @@
       if (!(await UI.confirm(`Ouvrir un booster pour ${cost()} ${Theme.t.cur} ?`, 'Oui !', 'Non'))) return;
       UI.go('booster', {}, { replace: true });
     };
+    return () => { stopPager(); root.classList.remove('full', 'fit'); };
   });
 
   function zoom(c) {

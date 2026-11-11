@@ -1580,3 +1580,50 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 @media (orientation: portrait) {
   .lst-pane[data-p=quete] .quest-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; }
 }
+
+/* ---------- Mes cartes : barre compacte + classeur à pages ---------- */
+.cards-page { display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 12px); width: min(100%, 1300px); margin: 0 auto; min-height: 0; }
+.cards-page > * { flex: 0 0 auto; }
+.cards-page .booster-bar { flex-direction: row !important; flex-wrap: nowrap; align-items: center; text-align: left !important; gap: clamp(8px, 2vmin, 24px); padding: clamp(6px, 1.2vh, 14px); }
+.cards-page .pack-mini { width: clamp(44px, 8vh, 100px); margin: 0 !important; }
+.cards-page .pack-mini .pack { --pw: clamp(44px, 8vh, 100px); }
+.cards-page .bb-info { flex: 1 1 auto; min-width: 0; }
+.cards-page .bb-title { font-weight: 700; font-size: clamp(15px, 2.6vh, 28px); }
+.cards-page .bb-sub { font-size: clamp(12px, 1.8vh, 17px); margin-top: 4px; }
+.cards-page .booster-bar .progress { margin: 4px 0 0; }
+.cards-page [data-a=open] { flex: 0 0 auto; font-size: clamp(14px, 2.2vh, 22px); padding: .35em .8em; line-height: 1.15; }
+.cards-page .bb-price { font-size: .85em; display: inline-flex; align-items: center; gap: 4px; }
+.cards-page .tabs { margin: 0; flex-wrap: nowrap; justify-content: center; gap: 6px; }
+.cards-page .tabs .pix-btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; font-size: clamp(12px, 2vh, 20px); padding: .3em .6em; }
+.cards-page .el-tabs { overflow: hidden; }
+@media (max-width: 760px) { .cards-page .el-name { display: none; } .cards-page .set-tabs .pix-btn small { display: none; } }
+.cards-page > .binder, .cards-page > .qalbum-wrap { flex: 1 1 auto; min-height: 0; }
+.qalbum-wrap { display: flex; flex-direction: column; }
+.qalbum-wrap > div { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.qalbum-wrap .quest-album-sum { flex: 0 0 auto; margin: 0 0 6px; text-align: center; }
+.qalbum-wrap .binder { flex: 1 1 auto; min-height: 0; }
+.binder { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; align-items: center; gap: 4px clamp(4px, 1vmin, 12px); }
+.binder .bnd-view { grid-column: 2; grid-row: 1; height: 100%; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
+.binder .bnd-grid { display: grid; gap: clamp(6px, 1.2vmin, 12px); margin: 0; justify-content: center; align-content: center; }
+.binder .bnd-prev, .binder .bnd-next { grid-row: 1; width: clamp(36px, 6vmin, 60px); height: clamp(56px, 12vh, 110px); padding: 0; font-size: clamp(16px, 3vh, 28px); }
+.binder .bnd-prev { grid-column: 1; } .binder .bnd-next { grid-column: 3; }
+.binder .bnd-prev:disabled, .binder .bnd-next:disabled { opacity: .25; }
+.binder .bnd-pages { grid-column: 1 / -1; grid-row: 2; text-align: center; font-weight: 700; font-size: clamp(12px, 1.9vh, 18px); min-height: 1.2em; }
+.binder.single .bnd-prev, .binder.single .bnd-next { visibility: hidden; }
+.bnd-grid.flip-l { animation: flipL .25s ease-out; } .bnd-grid.flip-r { animation: flipR .25s ease-out; }
+@keyframes flipL { from { transform: translateX(40px); opacity: .3; } } @keyframes flipR { from { transform: translateX(-40px); opacity: .3; } }
+.bnd-grid .tcard { animation: none !important; }
+
+.cards-page .bb-short { display: none; }
+@media (max-width: 1000px) { .cards-page .el-name { display: none; } .cards-page .el-tabs .pix-btn { flex: 1 1 0; padding: .3em .2em; } }
+@media (max-width: 760px) {
+  .cards-page .pack-mini { display: none; }
+  .cards-page .bb-long { display: none; } .cards-page .bb-short { display: inline; }
+  .cards-page .bb-title { font-size: 16px; }
+  .cards-page .bb-sub { font-size: 12px; line-height: 1.2; }
+  .cards-page .booster-bar { padding: 8px 10px; }
+  .cards-page .set-tabs .pix-btn { flex: 1 1 0; }
+  .qalbum-wrap .quest-album-sum { font-size: 12px; }
+}
+.cards-page .el-all-s { display: none; }
+@media (max-width: 760px) { .cards-page .el-all { display: none; } .cards-page .el-all-s { display: inline; } .cards-page .el-tabs { gap: 3px; } .cards-page .el-tabs .pix-btn { font-size: 12px; padding: .3em .1em; } }
