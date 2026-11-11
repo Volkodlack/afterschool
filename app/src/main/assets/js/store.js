@@ -60,9 +60,16 @@
   write(GKEY, global);
 
   let saveTimer = null;
+  /* dates de dernière modification des réglages et du compagnon (pour la synchronisation entre appareils) */
+  const snap = { s: JSON.stringify(data.settings), p: JSON.stringify(data.pet || null) };
+  function stamp() {
+    const s = JSON.stringify(data.settings), p = JSON.stringify(data.pet || null);
+    if (s !== snap.s) { snap.s = s; data.settingsTs = Date.now(); }
+    if (p !== snap.p) { snap.p = p; data.petTs = Date.now(); }
+  }
   function save(now) {
     clearTimeout(saveTimer);
-    const doit = () => { data._ts = Date.now(); write(PKEY(global.current), data); syncSummary(); write(GKEY, global); hook('save'); };
+    const doit = () => { stamp(); data._ts = Date.now(); write(PKEY(global.current), data); syncSummary(); write(GKEY, global); hook('save'); };
     if (now) doit(); else saveTimer = setTimeout(doit, 150);
   }
   function saveGlobal() { global._ts = Date.now(); write(GKEY, global); hook('global'); }

@@ -76,14 +76,24 @@
     }
     return added;
   }
-  /* local contre distant -> { data, from: 'local' | 'remote', merged } */
+  /* les éléments « le plus récent gagne » : réglages parent et état du compagnon */
+  const pts = d => (d && (d.petTs || (d.pet && d.pet.t))) || 0;
+  function takeLatest(win, lose) {
+    let changed = false;
+    if (lose && (lose.settingsTs || 0) > (win.settingsTs || 0) && lose.settings) { win.settings = lose.settings; win.settingsTs = lose.settingsTs; changed = true; }
+    if (lose && lose.pet && pts(lose) > pts(win)) { win.pet = lose.pet; win.petTs = pts(lose); changed = true; }
+    return changed;
+  }
+  /* local contre distant -> { data, from: 'local' | 'remote', merged }
+     progression (niveau, mots, cartes, quêtes) : l'appareil où l'enfant est le plus avancé (expérience) ;
+     réglages parent et compagnon : la version la plus récente ; nouvelles listes : ajoutées */
   function decide(local, remote) {
     if (!remote) return { data: local, from: 'local', merged: false };
     if (!local) return { data: remote, from: 'remote', merged: false };
     const c = cmpAdvance(local, remote);
-    if (c >= 0) { const merged = mergeNew(local, remote); return { data: local, from: 'local', merged }; }
-    const merged = mergeNew(remote, local);
-    return { data: remote, from: 'remote', merged };
+    const [win, lose, from] = c >= 0 ? [local, remote, 'local'] : [remote, local, 'remote'];
+    const m1 = mergeNew(win, lose), m2 = takeLatest(win, lose);
+    return { data: win, from, merged: m1 || m2 };
   }
   function adoptRemote(id, d) {
     io.write(io.PKEY(id), d);
