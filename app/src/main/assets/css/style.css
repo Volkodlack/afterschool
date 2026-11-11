@@ -1727,3 +1727,41 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .dct-res .dct-hero, .dct-res .dct-note { align-self: center; }
 .dct-res .dct-hero .bubble { text-align: left; }
 @media (max-width: 560px) { .dct-res .dct-hero { flex-direction: column; gap: 6px; } .dct-res .dct-hero .bubble { text-align: center; } }
+/* écrans d'écriture : le mot et la consigne ne sont jamais écrasés (avant, « s'occuper » était coupé à mi-hauteur) */
+#screen.typing .game-area > .prompt, #screen.typing .game-area > .word-big, #screen.typing .efface-line, #screen.typing .efface-line .word-big { flex-shrink: 0; }
+.efface-line { flex-wrap: nowrap; gap: clamp(8px, 1.4vw, 16px); max-width: 100%; }
+.efface-line .word-big { min-width: 0; }
+/* bouton « écouter » rond : l'icône remplit le bouton même dans les écrans d'écriture */
+#screen.typing .pix-btn.icon-btn { padding: 0 !important; }
+/* boutons « Écouter » dorés : texte foncé, bien lisible sur le jaune */
+.speak-btn { --fg: var(--ink); text-shadow: 1px 1px 0 rgba(255,255,255,.5); }
+/* tuiles du monde des blocs : texte blanc cerné de noir (comme dans Minecraft), lisible même sur le sable, l'or ou le rose */
+.theme-pixel .tile, .theme-pixel .adv-tile { text-shadow: -2px 0 0 #2b1d12, 2px 0 0 #2b1d12, 0 -2px 0 #2b1d12, 0 2px 0 #2b1d12, -1px -1px 0 #2b1d12, 1px 1px 0 #2b1d12, 3px 3px 0 rgba(0,0,0,.55); }
+.theme-pixel .tile .sub { opacity: 1; }
+/* blocs de lettres / syllabes sur texture (brique, bois) : lettres cernées de noir, lisibles sur le motif */
+.theme-pixel .lblock { text-shadow: -2px 0 0 #2b1d12, 2px 0 0 #2b1d12, 0 -2px 0 #2b1d12, 0 2px 0 #2b1d12, -1px -1px 0 #2b1d12, 1px 1px 0 #2b1d12, 2px 3px 0 rgba(0,0,0,.5); }
+/* téléphone, « Mes mots » : la colonne du nom d'étape est assez large pour « Apprentissage » en entier (avant : « pprentissag ») */
+@media (max-width: 760px) {
+  .lp-h { width: 6.6em; }
+  .lp-h b { font-size: 10px; white-space: nowrap; overflow: visible; text-overflow: clip; letter-spacing: -.01em; }
+}
+/* téléphone couché : la case « Mon parcours » se fait petite pour laisser la place aux mots */
+@media (max-height: 520px) and (orientation: landscape) {
+  .lst .adv-tile { min-height: 0 !important; padding: 4px 10px; margin-bottom: 6px; gap: 10px !important; font-size: 18px !important; }
+  .lst .adv-tile .ic { width: 32px !important; height: 32px !important; }
+  .lst .adv-tile .sub { display: none; }
+  .lst .list-head { margin-bottom: 0; }
+  .lst-path { min-height: 120px; }
+}
+/* téléphone couché : les 13 accents tiennent dans le clavier (avant, « œ » était coupé) */
+@media (max-height: 520px) and (orientation: landscape) {
+  #screen.typing .game-area { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) !important; }
+  #screen.typing .kbd .krow { flex-wrap: nowrap; }
+  #screen.typing .kbd { gap: 4px !important; padding: 6px !important; }
+  #screen.typing .kbd .krow { flex: 0 0 auto; gap: 4px; height: auto !important; }
+  #screen.typing .kbd .key { flex: 1 1 0; min-width: 0; max-width: none; padding: 0; height: clamp(24px, 7.6vh, 40px) !important; font-size: clamp(14px, 4.6vh, 20px) !important; }
+  /* les accents sur deux lignes (7 + 6), des touches aussi larges que les lettres */
+  #screen.typing .kbd .krow:nth-child(4) { flex-wrap: wrap; justify-content: center; row-gap: 4px; }
+  #screen.typing .kbd .key.acc { flex: 0 0 calc((100% - 24px) / 7); }
+  #screen.typing .kbd .key.wide, #screen.typing .kbd .key.ok { flex: 3 1 0; }
+}

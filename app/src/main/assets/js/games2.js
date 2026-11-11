@@ -139,8 +139,9 @@
       const labels = ['Copie le mot.', 'Des lettres se sont envolées : écris le mot entier !', 'Le mot a disparu : écris-le de mémoire !'];
       const prompt = el(`<div class="prompt">Étape ${step + 1}/3 · ${labels[step]}</div>`);
       const big = el(`<div class="word-big fade-word">${[...word].map((c, i) => hidden.has(i) ? `<span class="gone">${esc(c)}</span>` : `<span>${esc(c)}</span>`).join('')}</div>`);
-      const tools = el('<div class="row center"></div>'); tools.appendChild(UI.speakBtn(word));
-      area.append(prompt, big, tools);
+      // le bouton « écouter » à côté du mot : une ligne de moins, le mot n'est plus écrasé au-dessus du clavier
+      const line = el('<div class="row center efface-line"></div>'); line.append(big, UI.speakBtn(word));
+      area.append(prompt, line);
       requestAnimationFrame(() => big.querySelectorAll('.gone').forEach((s, k) => setTimeout(() => s.classList.add('vanish'), 150 + k * 120)));
       const t = G.typer(area, word, {
         onSubmit(v) {
