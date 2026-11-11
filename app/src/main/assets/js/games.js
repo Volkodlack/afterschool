@@ -67,7 +67,8 @@
     render();
     const submit = () => {
       if (locked) return;
-      if (sess) stopVoice(true);
+      if (sess) stopListen();
+      if (voiceBox) hideRing();
       if (raw == null && typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
       const a = raw != null ? raw : attempt();
       if (same(a, target)) locked = true;
@@ -116,42 +117,81 @@
     const st = Store.data.settings;
     const canInk = Ink.supported(), canVoice = !!(window.Ear && window.Spell && Ear.available());
     const sw = canInk || canVoice ? el(`<div class="input-switch"><button class="pix-btn small" data-m="kbd">⌨️ Clavier</button>${canInk ? '<button class="pix-btn small" data-m="ink">✏️ À la main</button>' : ''}${canVoice ? '<button class="pix-btn small" data-m="voice">🎤 J\'épelle</button>' : ''}</div>`) : null;
-    /* ----- épeler à voix haute : les lettres entendues remplissent les cases, le clavier sert à corriger ----- */
-    let voiceBox = null, sess = null, autoT = 0;
-    function voiceLetters(txt) {
-      const ls = Spell.letters(txt, target).filter(c => !isSep(c));
-      typed = ls.slice(0, editable.length);
-      // trop de lettres : c'est ce qui a été dit qui compte
-      raw = ls.length > editable.length ? ls.join('') : null;
-      render();
-      return ls.length;
+    /* ----- épeler à voix haute : un gros bouton micro à la place du clavier ;
+       en cas de doute, les lettres possibles apparaissent autour du bouton ----- */
+    let voiceBox = null, sess = null, stableT = 0, autoT = 0, listening = false, empties = 0;
+    const vq = s0 => voiceBox && voiceBox.querySelector(s0);
+    function vStatus(t) { const x = vq('.vsp-txt'); if (x) x.textContent = t; }
+    function full() { return typed.length >= editable.length; }
+    function addLetter(l) {
+      if (full()) return;
+      typed.push(l); raw = null; render(); SFX.play('pop');
+      if (full()) { stopListen(); hideRing(); vStatus('Toutes les lettres sont là ! Vérifie puis appuie sur OK ✔'); }
     }
-    function stopVoice(cancel) {
-      clearTimeout(autoT);
-      const s0 = sess; sess = null;
-      if (voiceBox) { voiceBox.classList.remove('on'); voiceBox.querySelector('.vb-btn').innerHTML = '🎤 Épelle le mot'; }
-      if (!s0) return;
-      if (cancel) { s0.cancel(); return; }
-      s0.stop().then(res => { if (!locked && res && res.text) voiceLetters(res.text); });
-    }
-    function startVoice() {
-      if (locked) return;
-      if (sess) return stopVoice();
-      typed = []; raw = null; render();
-      voiceBox.classList.add('on');
-      voiceBox.querySelector('.vb-btn').innerHTML = '■ J\'ai fini';
-      voiceBox.querySelector('.vb-txt').textContent = 'Je t\'écoute : dis les lettres une par une…';
-      sess = Ear.listen({
-        onText(t) {
-          if (!sess) return;
-          if (!voiceBox.isConnected) return stopVoice(true); // le mot est fini ou l'écran a changé
-          voiceBox.querySelector('.vb-txt').textContent = t ? '« ' + t + ' »' : 'Je t\'écoute…';
-          const n = voiceLetters(t);
-          clearTimeout(autoT);
-          if (n >= editable.length) autoT = setTimeout(() => stopVoice(), 900); // toutes les lettres sont là
-        },
-        onError(e) { UI.toast(e === 'mic' ? 'Autorise le micro pour épeler 🎤' : 'Le micro ne marche pas, utilise le clavier'); stopVoice(true); }
+    function hideRing() { clearTimeout(autoT); const r = vq('.vsp-ring'); if (r) r.querySelectorAll('.vsp-c').forEach(b => b.remove()); voiceBox && voiceBox.classList.remove('doubt'); }
+    function showRing(item) {
+      hideRing();
+      const ring = vq('.vsp-ring'); voiceBox.classList.add('doubt');
+      const n = item.choices.length;
+      item.choices.forEach((l, k) => {
+        const a = -Math.PI / 2 + k / n * Math.PI * 2;
+        const b = el(`<button class="vsp-c ${k === 0 && item.letter ? 'best' : ''}" style="left:${50 + Math.cos(a) * 41}%;top:${50 + Math.sin(a) * 41}%;animation-delay:${k * .04}s">${esc(l)}</button>`);
+        b.onclick = e => { e.stopPropagation(); hideRing(); addLetter(l); if (!full()) setTimeout(listen, 200); };
+        ring.appendChild(b);
       });
+      vStatus(item.letter ? 'J\'ai un doute : touche la bonne lettre !' : 'Je n\'ai pas bien compris : c\'est laquelle ?');
+      // sans réponse, on garde la lettre entendue au bout de 4 secondes
+      if (item.letter) autoT = setTimeout(() => { if (!voiceBox.classList.contains('doubt')) return; hideRing(); addLetter(item.letter); if (!full()) listen(); }, 4000);
+    }
+    function process(t) {
+      const items = Spell.guess(t, target).filter(x => !x.letter || !isSep(x.letter));
+      if (!items.length) return false;
+      for (const it of items) {
+        if (full()) break;
+        if (it.choices.length) { showRing(it); return true; }
+        addLetter(it.letter);
+      }
+      if (!full()) setTimeout(listen, 200);
+      return true;
+    }
+    function stopListen() {
+      clearTimeout(stableT); listening = false;
+      if (voiceBox) voiceBox.classList.remove('on');
+      const s0 = sess; sess = null; if (s0) s0.cancel();
+    }
+    function listen() {
+      if (locked || !voiceBox || !voiceBox.isConnected || full() || listening) return;
+      hideRing(); listening = true; voiceBox.classList.add('on');
+      vStatus('Je t\'écoute… dis une lettre');
+      let last = '';
+      const me = sess = Ear.listen({
+        onText(t) {
+          if (sess !== me) return;
+          if (!voiceBox.isConnected) return stopListen();
+          last = t || '';
+          if (last) vStatus('« ' + last + ' »');
+          clearTimeout(stableT);
+          // la phrase ne bouge plus depuis un moment : on la lit
+          if (last.trim()) stableT = setTimeout(() => { if (sess !== me) return; stopListen(); empties = 0; if (!process(last)) { vStatus('Je n\'ai pas compris, recommence 🙂'); setTimeout(listen, 600); } }, 700);
+        },
+        onEnd() {
+          if (sess !== me) return;
+          stopListen();
+          if (last.trim()) { if (!process(last)) setTimeout(listen, 400); }
+          else if (++empties < 3) setTimeout(listen, 200);
+          else { empties = 0; vStatus('Appuie sur le micro pour continuer 🎤'); }
+        },
+        onError(e) { UI.toast(e === 'mic' ? 'Autorise le micro pour épeler 🎤' : 'Le micro ne marche pas, utilise le clavier'); stopListen(); }
+      });
+    }
+    function buildVoice() {
+      voiceBox = el(`<div class="vsp">
+        <div class="vsp-txt">Appuie sur le micro et dis les lettres une par une. Pour un accent : « e accent aigu ».</div>
+        <div class="vsp-ring"><button class="vsp-mic" aria-label="Épeler">🎤</button></div>
+        <div class="vsp-row"><button class="pix-btn vsp-del">⌫ Effacer</button><button class="pix-btn green vsp-ok">OK ✔</button></div></div>`);
+      vq('.vsp-mic').onclick = () => { SFX.play('pop'); empties = 0; if (listening) { stopListen(); vStatus('En pause : appuie sur le micro pour continuer'); } else listen(); };
+      vq('.vsp-del').onclick = () => { hideRing(); typed.pop(); raw = null; render(); if (!listening && !full()) listen(); };
+      vq('.vsp-ok').onclick = () => { if (!full()) { UI.shake(slots); SFX.play('bad'); return; } submit(); };
     }
     async function readInk(strokes) {
       const n = ++recoN;
@@ -167,7 +207,7 @@
     function setMode(m) {
       if (m === 'ink' && !canInk) m = 'kbd';
       if (m === 'voice' && !canVoice) m = 'kbd';
-      if (sess) stopVoice(true);
+      if (sess) stopListen();
       if (voiceBox) voiceBox.remove();
       st.inputMode = m; Store.save(); mode = m; seg = 0; segRaw.length = 0;
       if (sw) sw.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
@@ -201,13 +241,11 @@
         if (pad) pad.el.remove();
         if (segLabel) segLabel.remove();
         if (m === 'voice') {
-          if (!voiceBox) {
-            voiceBox = el(`<div class="voice-spell"><button class="pix-btn gold big vb-btn">🎤 Épelle le mot</button><div class="vb-txt">Appuie, puis dis les lettres une par une. Pour un accent : « e accent aigu ».</div></div>`);
-            voiceBox.querySelector('.vb-btn').onclick = () => { SFX.play('pop'); startVoice(); };
-          }
+          // pas de clavier : le gros bouton micro prend sa place
+          kb.remove();
+          if (!voiceBox) buildVoice();
           area.appendChild(voiceBox);
-        }
-        area.appendChild(kb);
+        } else area.appendChild(kb);
       }
     }
     if (sw) {

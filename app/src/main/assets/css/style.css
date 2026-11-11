@@ -1507,9 +1507,30 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
   #screen.typing .kbd .key.wide { max-width: 190px; }
 }
 
-/* épeler à voix haute */
-.voice-spell { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
-.voice-spell .vb-txt { font-size: clamp(14px, 2.2vh, 20px); text-align: center; min-height: 1.3em; max-width: 90%; }
-.voice-spell.on .vb-btn { background: var(--red); color: #fff; animation: inkPulse .8s ease-in-out infinite alternate; }
+/* épeler à voix haute : gros bouton micro, lettres possibles en cercle autour */
+.vsp { width: 100%; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: clamp(6px, 1.2vh, 14px); }
+.vsp-txt { font-weight: 700; font-size: clamp(15px, 2.4vh, 22px); text-align: center; min-height: 2.6em; max-width: 92%; display: flex; align-items: center; }
+.vsp-ring { position: relative; width: min(84vw, 40vh, 380px); aspect-ratio: 1; flex: 0 0 auto; }
+.vsp-mic { position: absolute; left: 50%; top: 50%; width: 46%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  border: 5px solid var(--ink); background: radial-gradient(circle at 35% 30%, #ffe680, #f5c542 60%, #d99a1c); font-size: clamp(40px, 9vh, 84px);
+  box-shadow: 0 7px 0 rgba(43,29,18,.35); cursor: pointer; padding: 0; transition: transform .1s; }
+.vsp-mic:active { transform: translate(-50%, -46%); }
+.vsp.on .vsp-mic { background: radial-gradient(circle at 35% 30%, #ff9a8a, #e5533d 60%, #b8321e); animation: micPulse 1s ease-in-out infinite; }
+.vsp.on .vsp-ring::before { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 4px solid rgba(229,83,61,.45); animation: micWave 1.2s ease-out infinite; }
+@keyframes micPulse { 50% { box-shadow: 0 7px 0 rgba(43,29,18,.35), 0 0 0 14px rgba(229,83,61,.18); } }
+@keyframes micWave { from { transform: scale(.85); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+.vsp-c { position: absolute; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; border: 4px solid var(--ink); background: #fff;
+  font-family: "Lecture"; font-weight: 700; font-size: clamp(26px, 5.4vh, 46px); padding: 0; box-shadow: 0 5px 0 rgba(43,29,18,.3); animation: candIn .25s ease-out both; cursor: pointer; z-index: 2; }
+.vsp-c.best { background: #fff6c8; border-color: var(--gold); }
+.vsp-c.best::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 4px solid var(--gold); clip-path: inset(0 0 0 0); animation: candTimer 4s linear both; }
+@keyframes candIn { from { transform: translate(-50%, -50%) scale(0); } }
+@keyframes candTimer { from { opacity: 1; transform: rotate(0); } to { opacity: .15; transform: rotate(360deg); } }
+.vsp.doubt .vsp-mic { filter: grayscale(.6) brightness(.95); }
+.vsp-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
+.vsp-row .pix-btn { font-size: clamp(16px, 2.6vh, 24px); min-width: min(34%, 260px); }
+.theme-poney .vsp-mic { border: 4px solid #fff; background: radial-gradient(circle at 35% 30%, #ffd6e8, #ff9ec4 60%, #e0709c); box-shadow: 0 7px 0 rgba(224,138,176,.4); }
+.theme-poney .vsp.on .vsp-mic { background: radial-gradient(circle at 35% 30%, #ffb3c1, #ff6f91 60%, #d94a70); }
+.theme-poney .vsp-c { border: 3px solid #ffc2dc; color: #5a3a4a; box-shadow: 0 5px 0 rgba(224,138,176,.35); }
+.theme-poney .vsp-c.best { background: #fff4d6; border-color: #f5c542; }
 .input-switch .pix-btn.on { filter: brightness(1.08); outline: 3px solid var(--gold); }
 @media (max-height: 650px) and (min-width: 761px) { .voice-spell .vb-txt { display: none; } #screen.typing .voice-spell .vb-btn { padding: .25em 1em; } }

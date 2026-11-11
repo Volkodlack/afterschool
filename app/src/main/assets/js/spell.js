@@ -85,5 +85,65 @@
     return out;
   }
 
-  window.Spell = { letters };
+  /* ---------- doute : lettres qui se ressemblent à l'oreille ---------- */
+  // noms « propres » d'une lettre : quand la reconnaissance écrit exactement ça, on lui fait confiance
+  const CLEAR = { a: ['a'], b: ['b', 'be'], c: ['c', 'ce'], d: ['d', 'de'], e: ['e', 'eu'], f: ['f', 'effe'], g: ['g', 'ge'], h: ['h', 'ache'],
+    i: ['i'], j: ['j', 'ji'], k: ['k', 'ka'], l: ['l', 'elle'], m: ['m', 'emme'], n: ['n', 'enne'], o: ['o'], p: ['p', 'pe'], q: ['q', 'ku'],
+    r: ['r', 'erre'], s: ['s', 'esse'], t: ['t', 'te'], u: ['u'], v: ['v', 've'], w: ['w'], x: ['x', 'ixe'], y: ['igrec'], z: ['z', 'zede'] };
+  // familles de sons proches (lettres en « é », en « è », a/ka/ache…)
+  const GROUPS = [['b', 'c', 'd', 'g', 'p', 't', 'v', 'w'], ['f', 'l', 'm', 'n', 'r', 's', 'x'], ['a', 'k', 'h'], ['e', 'u', 'o'], ['i', 'y', 'j'], ['q', 'u', 'k'], ['s', 'c', 'x', 'z'], ['g', 'j']];
+  const ACCENTED = { e: ['é', 'è', 'ê', 'ë'], a: ['à', 'â'], u: ['ù', 'û'], i: ['î', 'ï'], o: ['ô'], c: ['ç'] };
+  function lev(a, b) {
+    const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; }
+    return prev[n];
+  }
+  /* lettres les plus proches d'un son jamais vu (« bé » mal transcrit en « bey », « ka » en « cat »…) */
+  function nearest(tok, n) {
+    const sc = {};
+    for (const [w, l] of Object.entries(MAP)) { if (w.length > 6) continue; const d = lev(tok, w) / Math.max(tok.length, w.length); if (sc[l] == null || d < sc[l]) sc[l] = d; }
+    return Object.entries(sc).sort((x, y) => x[1] - y[1]).slice(0, n).map(x => x[0]);
+  }
+  /* un énoncé (souvent une seule lettre) -> [{ letter, choices }]
+     choices vide = sûr ; sinon les lettres à proposer autour du bouton, celle entendue en premier */
+  function guess(text, target) {
+    const tl = strip(String(target || '').toLowerCase());
+    const tAcc = String(target || '').toLowerCase();
+    const res = [];
+    let t = String(text || '').toLowerCase().trim();
+    if (!t) return res;
+    const ls = letters(t, null);
+    const toks = (strip(t).replace(/['’]/g, '').match(/[a-z]+/g) || []).filter(w => !SKIP.has(w) && !NUM[w] && !ACC[w] && !ACC_ALIAS[w]);
+    if (!ls.length) {
+      // rien de reconnu : les lettres dont le nom ressemble le plus à ce qui a été entendu
+      const tok = toks.join('') || strip(t).replace(/[^a-z]/g, '');
+      if (tok) res.push({ letter: null, choices: nearest(tok, 6) });
+      return res;
+    }
+    ls.forEach((l, k) => {
+      const base = strip(l);
+      const tok = toks[k] || '';
+      // lettres qui se confondent très souvent à l'oreille : toujours une proposition, même si le nom est bien transcrit
+      const ALWAYS = 'abcdgkhmnptvue';
+      const clear = !ALWAYS.includes(base) && ((CLEAR[base] || []).includes(tok) || ls.length > 1 && tok.length === 1);
+      let ch = [];
+      if (!clear) {
+        const g = new Set([base]);
+        GROUPS.forEach(gr => { if (gr.includes(base)) gr.forEach(x => g.add(x)); });
+        ch = [...g];
+        // on garde les plus proches à l'oreille si la famille est grande
+        if (ch.length > 6) { const near = nearest(tok || base, 10).filter(x => g.has(x)); ch = [base, ...near.filter(x => x !== base)].slice(0, 6); }
+      }
+      // voyelle accentuée possible dans le mot : on propose aussi les accents (sans dire où ils sont)
+      if (ACCENTED[base] && l === base && ACCENTED[base].some(x => tAcc.includes(x))) {
+        const acc = ACCENTED[base].filter(x => tAcc.includes(x));
+        ch = [...new Set([...(ch.length ? ch : [base]), ...acc])];
+      }
+      if (ch.length && ch[0] !== l) ch = [l, ...ch.filter(x => x !== l)];
+      res.push({ letter: l, choices: ch.length > 1 ? ch.slice(0, 8) : [] });
+    });
+    return res;
+  }
+
+  window.Spell = { letters, guess };
 })();

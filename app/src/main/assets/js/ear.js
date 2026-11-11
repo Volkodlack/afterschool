@@ -11,7 +11,7 @@
     const s = sessions[id]; if (!s) return;
     s.text = text || '';
     s.onText && s.onText(s.text);
-    if (final) { delete sessions[id]; s.resolve && s.resolve({ text: s.text, blob: s.blob }); }
+    if (final) { delete sessions[id]; s.onEnd && s.onEnd(s.text); s.resolve && s.resolve({ text: s.text, blob: s.blob }); }
   };
   AS.onAsrAudio = (id, b64) => {
     const s = sessions[id]; if (!s) return;
@@ -126,9 +126,9 @@
 
   function listen(opts = {}) {
     if (!N && SR) return webListen(opts);
-    const { onText, onState, onError } = opts;
+    const { onText, onState, onError, onEnd } = opts;
     const id = 'asr' + (++seq);
-    const s = sessions[id] = { onText, onState, onError, text: '' };
+    const s = sessions[id] = { onText, onState, onError, onEnd, text: '' };
     const done = new Promise(res => s.resolve = res);
     try { N.asrStart(id); } catch (e) { AS.asrError(id, 'start'); }
     return {
