@@ -299,7 +299,7 @@
       if (!url || bgKey === url) return;
       bgKey = url;
       const im = new Image();
-      im.onload = () => { if (bgKey !== url) return; scene.style.setProperty('--pet-bg', `url("${url}")`); scene.classList.add('has-bg'); scene.classList.toggle('bg-night', k === 'bg_night'); };
+      im.onload = () => { if (bgKey !== url) return; scene.style.setProperty('--pet-bg', `url("${new URL(url, location.href).href}")`); /* adresse complète : sinon résolue depuis css/ (version web) */ scene.classList.add('has-bg'); scene.classList.toggle('bg-night', k === 'bg_night'); };
       im.src = url;
     }
     const fx = (txt, cls = '') => { const f = el(`<span class="pet-pop ${cls}">${txt}</span>`); f.style.left = (35 + Math.random() * 30) + '%'; w.querySelector('.pet-fx').appendChild(f); setTimeout(() => f.remove(), 1300); };
