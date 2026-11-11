@@ -67,10 +67,11 @@
     render();
     const submit = () => {
       if (locked) return;
+      if (sess) stopVoice(true);
       if (raw == null && typed.length < editable.length) { UI.shake(slots); SFX.play('bad'); return; }
       const a = raw != null ? raw : attempt();
       if (same(a, target)) locked = true;
-      else if (window.Fair) Fair.attempt(a, target);
+      else if (window.Fair && mode !== 'voice') Fair.attempt(a, target); // la reconnaissance vocale peut se tromper : jamais de carton
       onSubmit(a);
     };
     const kb = UI.keyboard({
@@ -113,7 +114,45 @@
     /* ----- clavier ou écriture à la main ----- */
     let pad = null, recoT = 0, recoN = 0;
     const st = Store.data.settings;
-    const sw = Ink.supported() ? el(`<div class="input-switch"><button class="pix-btn small" data-m="kbd">⌨️ Clavier</button><button class="pix-btn small" data-m="ink">✏️ À la main</button></div>`) : null;
+    const canInk = Ink.supported(), canVoice = !!(window.Ear && window.Spell && Ear.available());
+    const sw = canInk || canVoice ? el(`<div class="input-switch"><button class="pix-btn small" data-m="kbd">⌨️ Clavier</button>${canInk ? '<button class="pix-btn small" data-m="ink">✏️ À la main</button>' : ''}${canVoice ? '<button class="pix-btn small" data-m="voice">🎤 J\'épelle</button>' : ''}</div>`) : null;
+    /* ----- épeler à voix haute : les lettres entendues remplissent les cases, le clavier sert à corriger ----- */
+    let voiceBox = null, sess = null, autoT = 0;
+    function voiceLetters(txt) {
+      const ls = Spell.letters(txt, target).filter(c => !isSep(c));
+      typed = ls.slice(0, editable.length);
+      // trop de lettres : c'est ce qui a été dit qui compte
+      raw = ls.length > editable.length ? ls.join('') : null;
+      render();
+      return ls.length;
+    }
+    function stopVoice(cancel) {
+      clearTimeout(autoT);
+      const s0 = sess; sess = null;
+      if (voiceBox) { voiceBox.classList.remove('on'); voiceBox.querySelector('.vb-btn').innerHTML = '🎤 Épelle le mot'; }
+      if (!s0) return;
+      if (cancel) { s0.cancel(); return; }
+      s0.stop().then(res => { if (!locked && res && res.text) voiceLetters(res.text); });
+    }
+    function startVoice() {
+      if (locked) return;
+      if (sess) return stopVoice();
+      typed = []; raw = null; render();
+      voiceBox.classList.add('on');
+      voiceBox.querySelector('.vb-btn').innerHTML = '■ J\'ai fini';
+      voiceBox.querySelector('.vb-txt').textContent = 'Je t\'écoute : dis les lettres une par une…';
+      sess = Ear.listen({
+        onText(t) {
+          if (!sess) return;
+          if (!voiceBox.isConnected) return stopVoice(true); // le mot est fini ou l'écran a changé
+          voiceBox.querySelector('.vb-txt').textContent = t ? '« ' + t + ' »' : 'Je t\'écoute…';
+          const n = voiceLetters(t);
+          clearTimeout(autoT);
+          if (n >= editable.length) autoT = setTimeout(() => stopVoice(), 900); // toutes les lettres sont là
+        },
+        onError(e) { UI.toast(e === 'mic' ? 'Autorise le micro pour épeler 🎤' : 'Le micro ne marche pas, utilise le clavier'); stopVoice(true); }
+      });
+    }
     async function readInk(strokes) {
       const n = ++recoN;
       if (!strokes.length) { setText(''); segRaw[seg] = null; return true; }
@@ -126,7 +165,10 @@
       return true;
     }
     function setMode(m) {
-      if (m === 'ink' && !Ink.supported()) m = 'kbd';
+      if (m === 'ink' && !canInk) m = 'kbd';
+      if (m === 'voice' && !canVoice) m = 'kbd';
+      if (sess) stopVoice(true);
+      if (voiceBox) voiceBox.remove();
       st.inputMode = m; Store.save(); mode = m; seg = 0; segRaw.length = 0;
       if (sw) sw.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
       typed = []; raw = null; render();
@@ -158,6 +200,13 @@
       } else {
         if (pad) pad.el.remove();
         if (segLabel) segLabel.remove();
+        if (m === 'voice') {
+          if (!voiceBox) {
+            voiceBox = el(`<div class="voice-spell"><button class="pix-btn gold big vb-btn">🎤 Épelle le mot</button><div class="vb-txt">Appuie, puis dis les lettres une par une. Pour un accent : « e accent aigu ».</div></div>`);
+            voiceBox.querySelector('.vb-btn').onclick = () => { SFX.play('pop'); startVoice(); };
+          }
+          area.appendChild(voiceBox);
+        }
         area.appendChild(kb);
       }
     }
@@ -166,7 +215,7 @@
       sw.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SFX.play('pop'); setMode(b.dataset.m); });
     }
     area.appendChild(kb);
-    setMode(st.inputMode === 'ink' ? 'ink' : 'kbd');
+    setMode(st.inputMode === 'ink' || st.inputMode === 'voice' ? st.inputMode : 'kbd');
     return {
       slots, kb,
       showDiff() {
