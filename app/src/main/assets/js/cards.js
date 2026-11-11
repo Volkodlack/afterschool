@@ -270,6 +270,8 @@
   }
   const opened = () => { state(); return Store.data.cardsWeek.opened || 0; };
   const WEEK_MAX = 10;
+  /* boosters offerts : un par liste entièrement maîtrisée, moins ceux déjà ouverts (calcul toujours juste, même après une synchronisation) */
+  const freeLeft = () => Math.max(0, (window.Quests ? Quests.masteredCount() : 0) - (Store.data.freeUsed || 0));
   const cost = () => BOOSTER_BASE * Math.pow(2, Math.min(opened(), WEEK_MAX)); // 125, 250, 500, 1000… remis à 125 le lundi
   const weekFull = () => opened() >= WEEK_MAX;
   const canOpen = () => !weekFull() && Store.data.stats.gems >= cost();
@@ -302,10 +304,10 @@
     const ph = photo('c' + c.num);
     return `<div class="tcard r-${c.rar} el-${c.el} set${c.set} ${ph ? 'has-photo' : ''}" data-id="${c.id}" style="--f:${E.frame};--f2:${E.frame2};--bg:${E.bg}">
       <div class="tc-in">
-        <div class="tc-top"><span class="tc-name">${esc(c.name)}</span><span class="tc-pv">${SET.label}<b>${c.pv}</b></span><span class="tc-el">${SET.icon(c.el)}</span></div>
+        <div class="tc-top"><span class="tc-name" style="--len:${[...c.name].length}">${esc(c.name)}</span><span class="tc-pv">${SET.label}<b>${c.pv}</b></span><span class="tc-el">${SET.icon(c.el)}</span></div>
         <div class="tc-art"><img src="${ph || art(c)}" alt=""${ph ? ' onerror="AS_artFail(this)"' : ''}></div>
         <div class="tc-meta">N°${c.num} · ${E.name} · ${R.name} ${R.sym}</div>
-        <div class="tc-atk"><span class="tc-cost">${SET.icon(c.el)}${c.dmg >= 60 ? SET.icon(c.el) : ''}</span><b>${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
+        <div class="tc-atk"><span class="tc-cost">${SET.icon(c.el)}${c.dmg >= 60 ? SET.icon(c.el) : ''}</span><b style="--len:${[...c.atk].length}">${esc(c.atk)}</b><span class="tc-dmg">${c.dmg}</span></div>
         <div class="tc-txt">${esc(c.txt)}</div>
       </div>${n}${opts.isNew ? '<span class="tc-new">NOUVELLE !</span>' : ''}</div>`;
   }
@@ -387,7 +389,7 @@
           <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
           <div class="bb-sub">${n >= WEEK_MAX ? `${WEEK_MAX} boosters ouverts cette semaine : rendez-vous lundi !` : n < WEEK_MAX && gems < price ? `Encore ${price - gems} ${Theme.t.cur} à gagner pour le prochain booster` : n ? `Le prix double à chaque booster de la semaine (${n} ouvert${n > 1 ? 's' : ''})` : `Le prix double à chaque booster de la semaine`}</div>
         </div>
-        ${Store.data.freeBoosters ? `<button class="pix-btn green bb-free" data-a="free">🎁 Booster<br><span class="bb-price">offert${Store.data.freeBoosters > 1 ? ' ×' + Store.data.freeBoosters : ''}</span></button>` : ''}
+        ${freeLeft() ? `<button class="pix-btn green bb-free" data-a="free">🎁 Booster<br><span class="bb-price">offert${freeLeft() > 1 ? ' ×' + freeLeft() : ''}</span></button>` : ''}
         <button class="pix-btn gold" data-a="open" ${gems >= price && n < WEEK_MAX ? '' : 'disabled'}>Ouvrir<br><span class="bb-price"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price}</span></button>
       </div>
       <div class="tabs set-tabs">
@@ -457,10 +459,10 @@
     UI.setTitle(free ? 'Booster offert !' : 'Booster !');
     const st = state();
     const price = cost();
-    if (free ? !(Store.data.freeBoosters > 0) : (weekFull() || Store.data.stats.gems < price)) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
+    if (free ? !(freeLeft() > 0) : (weekFull() || Store.data.stats.gems < price)) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
     // pay and draw immediately so leaving mid-animation never loses cards
     // (un booster offert ne coûte rien et ne fait pas monter le prix de la semaine)
-    if (free) Store.data.freeBoosters--;
+    if (free) Store.data.freeUsed = (Store.data.freeUsed || 0) + 1;
     else { Store.spendGems(price); Store.data.cardsWeek.opened++; }
     st.total = (st.total || 0) + 1;
     const pulled = draw();
@@ -559,5 +561,5 @@
     }
   });
 
-  window.Cards = { CARDS, art, photo, cardHTML, state, cost, canOpen, opened, ownedCount };
+  window.Cards = { freeLeft, CARDS, art, photo, cardHTML, state, cost, canOpen, opened, ownedCount };
 })();

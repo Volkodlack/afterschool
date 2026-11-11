@@ -238,7 +238,6 @@
           q.pending.push(c.n);
           won.push(c);
           // toute la liste maîtrisée : un booster offert en plus de la carte dorée
-          if (k === 3) { const d = Store.data; d.freeBoosters = (d.freeBoosters || 0) + 1; c.gift = true; }
         }
       });
     });
@@ -255,7 +254,7 @@
     return `<div class="tcard fa fa-s${c.step} ${ph ? 'has-photo' : ''}" data-q="${c.n}">
       <div class="tc-in">
         ${ph ? `<img class="fa-photo" src="${ph}" alt="" data-fb="q" onerror="AS_artFail(this)">` : drawnHTML(c)}
-        <div class="fa-top"><span class="fa-name">${esc(c.name)}</span><span class="fa-step" title="${S.name}">${S.icon}</span></div>
+        <div class="fa-top"><span class="fa-name" style="--len:${[...c.name].length}">${esc(c.name)}</span><span class="fa-step" title="${S.name}">${S.icon}</span></div>
         <div class="fa-bottom"><div class="fa-chap">Quête ${c.ch} · ${esc(c.chap.place)}</div><div class="fa-txt">${esc(c.txt)}</div>
           <div class="fa-meta">${c.num} · ${S.name} · ${S.tag}</div></div>
         <div class="fa-foil"></div>
@@ -312,8 +311,10 @@
         ok.style.visibility = '';
       }, 260);
     };
-    flip.onclick = turn; setTimeout(turn, 2600);
-    ok.onclick = () => { UI.closeModal(); revealing = false; setTimeout(flush, 350); };
+    const close = () => { UI.closeModal(); revealing = false; setTimeout(flush, 350); };
+    // une fois retournée, toucher la carte ferme aussi (le bouton peut être bas sur une tablette couchée)
+    flip.onclick = () => { if (turned && ok.style.visibility === '') close(); else turn(); }; setTimeout(turn, 2600);
+    ok.onclick = close;
   }
 
   /* ---------------- panneau de quête (écran des mots) ---------------- */
@@ -350,5 +351,7 @@
     root.appendChild(box);
   }
 
-  window.Quests = { drawnHTML, QCARDS, STEPS, check, flush, panel, album, markStarted, chapterOf, faHTML, pendingCount: () => st().pending.length, ownedCount: () => Object.keys(st().owned[Theme.id]).length };
+  /* listes entièrement maîtrisées (carte dorée gagnée) : chacune donne droit à un booster offert */
+  const masteredCount = () => Object.values(st().done).filter(d => d && d[3]).length;
+  window.Quests = { masteredCount, drawnHTML, QCARDS, STEPS, check, flush, panel, album, markStarted, chapterOf, faHTML, pendingCount: () => st().pending.length, ownedCount: () => Object.keys(st().owned[Theme.id]).length };
 })();
