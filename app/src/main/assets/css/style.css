@@ -1629,3 +1629,33 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 @media (max-width: 760px) { .cards-page .el-all { display: none; } .cards-page .el-all-s { display: inline; } .cards-page .el-tabs { gap: 3px; } .cards-page .el-tabs .pix-btn { font-size: 12px; padding: .3em .1em; } }
 #screen.fit > .game.center-col { display: flex; flex-direction: column; min-height: 0; }
 #screen.fit .rain-area { flex: 1 1 auto; height: auto !important; min-height: 0; }
+
+/* ---------- dictée (code parent) ---------- */
+.dct .dct-top { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.dct .dct-n { font-weight: 700; font-size: clamp(20px, 3.4vh, 34px); }
+.dct-answer { width: min(100%, 760px); min-height: 1.5em; font-family: "Lecture"; font-weight: 700; font-size: clamp(30px, 6vh, 64px); text-align: center;
+  background: #fff; border: 4px solid var(--ink); padding: .15em .5em; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: pre; }
+.theme-poney .dct-answer { border: 3px solid #ffc2dc; border-radius: 22px; }
+.dct-caret { display: inline-block; width: 3px; height: 1em; background: currentColor; margin-left: 2px; animation: caret 1s steps(2) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.dct-res { gap: clamp(6px, 1.4vh, 14px); }
+.dct-hero { display: flex; align-items: center; gap: 14px; }
+.dct-hero .mascot { width: clamp(60px, 11vh, 120px); }
+.dct-note { display: flex; align-items: baseline; gap: 8px; font-weight: 700; animation: pop .6s cubic-bezier(.3,1.8,.5,1) both; }
+.dct-score { font-size: clamp(56px, 12vh, 130px); line-height: 1; color: var(--ink); }
+.dct-res.perfect .dct-score { color: #e0a020; text-shadow: 0 0 18px rgba(245,197,66,.8); }
+.dct-on { font-size: clamp(22px, 4vh, 40px); }
+.dct-sub { text-align: center; font-size: clamp(13px, 2vh, 18px); }
+.dct-list { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; max-width: 1000px; }
+.dct-row { display: flex; align-items: center; gap: 6px; background: #fff; border: 3px solid var(--ink); padding: .15em .6em; font-size: clamp(15px, 2.4vh, 24px); }
+.dct-row.ok { background: #e3f7d6; } .dct-row.ko { background: #ffe2dc; }
+.dct-ic { font-weight: 700; } .dct-row.ok .dct-ic { color: #2f8746; } .dct-row.ko .dct-ic { color: #c0392b; }
+.dct-w { font-family: "Lecture"; font-weight: 700; }
+.dct-a { font-size: .75em; opacity: .8; }
+.theme-poney .dct-row { border: 2px solid #ffc2dc; border-radius: 999px; }
+.q-gift { font-weight: 700; background: #fff6c8; border: 3px solid var(--gold); padding: .4em .8em; text-align: center; }
+.bb-free { flex: 0 0 auto; font-size: clamp(14px, 2.2vh, 22px); padding: .35em .8em; line-height: 1.15; animation: micPulse 1.4s ease-in-out infinite; }
+.lst-tabs [data-a=dictee] { flex: 0 1 auto; }
+@media (max-width: 760px) { .lst-tabs { gap: 4px; } .lst-tabs .pix-btn { font-size: 13px; padding: .45em .25em; } }
+.cards-page .booster-bar { flex-wrap: wrap; } .cards-page .bb-info { flex: 1 1 150px; }
+@media (max-width: 760px) { .cards-page .booster-bar > .pix-btn { flex: 1 1 0; } }

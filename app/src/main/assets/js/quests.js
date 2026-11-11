@@ -237,6 +237,8 @@
           q.owned[Theme.id][c.n] = (q.owned[Theme.id][c.n] || 0) + 1;
           q.pending.push(c.n);
           won.push(c);
+          // toute la liste maîtrisée : un booster offert en plus de la carte dorée
+          if (k === 3) { const d = Store.data; d.freeBoosters = (d.freeBoosters || 0) + 1; c.gift = true; }
         }
       });
     });
@@ -291,6 +293,7 @@
         <div class="rays"></div>
         <h2>🏆 Quête accomplie !</h2>
         <p class="q-sub">${S.icon} Étape « ${S.name} » · Quête ${c.ch} : ${esc(c.chap.place)}</p>
+        ${c.step === 3 ? '<p class="q-gift">🎁 Tous les mots sont maîtrisés : <b>un booster t\'est offert</b> ! Ouvre-le dans « Mes cartes ».</p>' : ''}
         <div class="zoom-card q-card"><div class="q-flip">${'<div class="tcard back"><div class="tc-in"><div class="tc-back-logo">' + Pixel.svg('mascot') + '<span>QUÊTE</span></div></div></div>'}</div></div>
         <p class="q-hint">Touche la carte pour la retourner !</p>
         <div class="row center"><button class="pix-btn green big" data-a="ok" style="visibility:hidden">Génial !</button></div></div>`, { cls: 'zoom-modal q-modal', locked: true });

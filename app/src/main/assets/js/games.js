@@ -741,9 +741,10 @@
           <span class="ic">${Pixel.svg('sword')}</span><span><span class="t1">Mon parcours</span><span class="sub">5 minutes · chaque mot avec le jeu qui lui convient</span></span>
         </button>
         <div class="lst-tabs">
-          <button class="pix-btn small" data-t="mots">📘 Mes mots</button>
+          <button class="pix-btn small" data-t="mots">📘 Mots</button>
           <button class="pix-btn small" data-t="quete">🏆 Quête</button>
           <button class="pix-btn small" data-t="jeux">🎮 Jeux</button>
+          <button class="pix-btn small gold" data-a="dictee">📝 Dictée</button>
         </div>
         <div class="lst-body">
           <div class="lst-pane" data-p="mots">
@@ -775,6 +776,8 @@
     root.querySelector('[data-a=new]').onclick = async () => { if (await UI.parentGate()) UI.go('listEdit', {}); };
     root.querySelectorAll('.chip').forEach(c => c.onclick = () => UI.say(c.dataset.w));
     root.querySelector('[data-a=adv]').onclick = () => UI.go('session', { title: 'Aventure', mode: 'adventure', words: l.words, listId: l.id });
+    // la vraie dictée se lance avec un parent (code parent)
+    root.querySelector('[data-a=dictee]').onclick = async () => { if (await UI.parentGate()) UI.go('dictation', { listId: l.id }); };
     root.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
       const g = b.dataset.g;
       if (g === 'pluie') UI.go('rain', { title: 'Pluie de mots', words: l.words });

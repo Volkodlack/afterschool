@@ -206,6 +206,11 @@
       return { from: before, to: st };
     },
     mastery(w) { return this.stageOf(data.stats.words[w.toLowerCase()]); },
+    /* dictée réussie à 10/10 : les mots passent directement en « Maîtrisé » */
+    masterWords(ws) {
+      ws.forEach(w => { const k = w.toLowerCase(); const s = data.stats.words[k] || { ok: 0, err: 0, seen: 0, last: 0, hist: [] }; s.stage = 3; s.conf = 2; s.learn = 2; s.last = Date.now(); data.stats.words[k] = s; });
+      save(true);
+    },
     listMastery(l) {
       if (!l.words.length) return 0;
       return l.words.reduce((a, w) => a + this.mastery(w), 0) / (l.words.length * 3);

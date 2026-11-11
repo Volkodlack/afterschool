@@ -387,6 +387,7 @@
           <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
           <div class="bb-sub">${n >= WEEK_MAX ? `${WEEK_MAX} boosters ouverts cette semaine : rendez-vous lundi !` : n < WEEK_MAX && gems < price ? `Encore ${price - gems} ${Theme.t.cur} à gagner pour le prochain booster` : n ? `Le prix double à chaque booster de la semaine (${n} ouvert${n > 1 ? 's' : ''})` : `Le prix double à chaque booster de la semaine`}</div>
         </div>
+        ${Store.data.freeBoosters ? `<button class="pix-btn green bb-free" data-a="free">🎁 Booster<br><span class="bb-price">offert${Store.data.freeBoosters > 1 ? ' ×' + Store.data.freeBoosters : ''}</span></button>` : ''}
         <button class="pix-btn gold" data-a="open" ${gems >= price && n < WEEK_MAX ? '' : 'disabled'}>Ouvrir<br><span class="bb-price"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price}</span></button>
       </div>
       <div class="tabs set-tabs">
@@ -420,6 +421,8 @@
     const stopPager = pager(album, curSet + ':' + filter);
     wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = b.dataset.set === 'q' ? 'q' : +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
+    const fb = wrap.querySelector('[data-a=free]');
+    if (fb) fb.onclick = () => { SFX.play('pop'); UI.go('booster', { free: true }, { replace: true }); };
     wrap.querySelector('[data-a=open]').onclick = async () => {
       if (weekFull()) { UI.toast(`Maximum ${WEEK_MAX} boosters par semaine : rendez-vous lundi !`); return; }
       if (Store.data.stats.gems < cost()) { UI.toast(`Il te faut ${cost()} ${Theme.t.cur}`); return; }
@@ -450,14 +453,16 @@
   }
 
   /* ---------- booster opening ---------- */
-  UI.register('booster', (root) => {
-    UI.setTitle('Booster !');
+  UI.register('booster', (root, { free } = {}) => {
+    UI.setTitle(free ? 'Booster offert !' : 'Booster !');
     const st = state();
     const price = cost();
-    if (weekFull() || Store.data.stats.gems < price) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
+    if (free ? !(Store.data.freeBoosters > 0) : (weekFull() || Store.data.stats.gems < price)) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
     // pay and draw immediately so leaving mid-animation never loses cards
-    Store.spendGems(price);
-    Store.data.cardsWeek.opened++; st.total = (st.total || 0) + 1;
+    // (un booster offert ne coûte rien et ne fait pas monter le prix de la semaine)
+    if (free) Store.data.freeBoosters--;
+    else { Store.spendGems(price); Store.data.cardsWeek.opened++; }
+    st.total = (st.total || 0) + 1;
     const pulled = draw();
     const isNew = pulled.map(c => !st.owned[c.id]);
     const seen = new Set();
