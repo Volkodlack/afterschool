@@ -368,18 +368,24 @@
      Les écrans de lecture et de saisie de texte gardent leur taille (texte long, formulaires) ;
      l'album de cartes se feuillette par pages et la pluie de mots a sa propre hauteur. */
   const NOFIT = new Set(['reader', 'reading', 'poem', 'poemGame', 'poemEdit', 'sheetEdit', 'listEdit', 'parent', 'readCheck', 'rain', 'booster']);
-  function fitScreen() {
+  function fitScreen(iter = 0) {
     const scr = document.getElementById('screen');
     const box = scr && scr.firstElementChild;
     if (!box) return;
-    const fits = !NOFIT.has(scr.dataset.screen);
     const z0 = parseFloat(box.style.zoom) || 1;
-    if (!fits) { if (z0 !== 1) box.style.zoom = ''; return; }
-    const cs = getComputedStyle(scr);
-    const avail = scr.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const natural = box.getBoundingClientRect().height / z0;
-    const z = natural > avail + 1 ? Math.max(.55, Math.floor(avail / natural * 100) / 100) : 1;
-    if (Math.abs(z - z0) > .005) box.style.zoom = z === 1 ? '' : z;
+    if (NOFIT.has(scr.dataset.screen)) { if (z0 !== 1) box.style.zoom = ''; return; }
+    // ce qui dépasse (marges et ombres comprises) est mesuré par le défilement possible de l'écran
+    const over = scr.scrollHeight - scr.clientHeight;
+    const h = box.getBoundingClientRect().height;
+    let z = z0;
+    if (over > 1) z = z0 * Math.max(.3, (h - over - 3) / h);
+    else if (z0 < 1 && iter === 0) {
+      // il y a peut-être de nouveau de la place (rotation, contenu plus petit) : on repart de 1
+      box.style.zoom = ''; if (scr.scrollHeight - scr.clientHeight <= 1) return; z = z0;
+    }
+    z = Math.max(.55, Math.min(1, Math.floor(z * 100) / 100));
+    if (Math.abs(z - (parseFloat(box.style.zoom) || 1)) > .004) box.style.zoom = z === 1 ? '' : z;
+    if (iter < 3 && scr.scrollHeight - scr.clientHeight > 1 && z > .55) requestAnimationFrame(() => fitScreen(iter + 1));
   }
   let fsT = 0;
   function fitScreenSoon() { clearTimeout(fsT); fsT = setTimeout(fitScreen, 60); setTimeout(fitScreen, 450); }

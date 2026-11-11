@@ -593,6 +593,7 @@
     const field = el('<div class="rain-area"></div>');
     wrap.append(bar, field);
     root.appendChild(wrap);
+    root.classList.add('full', 'fit'); // la zone de pluie remplit l'écran, sans défilement
     let lives = 3, caught = 0, missesWrong = 0, alive = true, raf = 0, last = 0, spawnT = 0;
     const queue = FR.shuffle(words).slice(0, 10);
     let wi = 0, target = queue[0], need = 3, got = 0, speed = 70;
@@ -662,7 +663,7 @@
     drawHearts(); drawScore(); setTarget();
     raf = requestAnimationFrame(loop);
     UI.onPause = () => { /* keeps running; fine for short pauses */ };
-    return () => { alive = false; cancelAnimationFrame(raf); };
+    return () => { alive = false; cancelAnimationFrame(raf); root.classList.remove('full', 'fit'); };
   }
   UI.register('rain', (root, p) => runRain(root, p));
 

@@ -1627,3 +1627,5 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 }
 .cards-page .el-all-s { display: none; }
 @media (max-width: 760px) { .cards-page .el-all { display: none; } .cards-page .el-all-s { display: inline; } .cards-page .el-tabs { gap: 3px; } .cards-page .el-tabs .pix-btn { font-size: 12px; padding: .3em .1em; } }
+#screen.fit > .game.center-col { display: flex; flex-direction: column; min-height: 0; }
+#screen.fit .rain-area { flex: 1 1 auto; height: auto !important; min-height: 0; }
