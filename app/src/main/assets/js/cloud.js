@@ -51,10 +51,63 @@
     (c.poems || []).forEach(p => { p.recs = (p.recs || []).slice(-10); });
     return JSON.stringify(c);
   }
+  /* ---------- quel appareil garde la main : le plus avancé, pas le dernier qui a enregistré ----------
+     Avancement = expérience totale (elle ne fait qu'augmenter quand l'enfant joue), puis bonnes réponses,
+     puis cartes, et seulement à égalité la date d'enregistrement. */
+  function advance(d) {
+    const st = (d && d.stats) || {};
+    const cards = d && d.cardsT ? Object.values(d.cardsT).reduce((n, t) => n + Object.keys((t && t.owned) || {}).length, 0) : 0;
+    return [st.xp || 0, st.totalCorrect || 0, cards, Object.keys(st.words || {}).length];
+  }
+  function cmpAdvance(a, b) {
+    const x = advance(a), y = advance(b);
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] - y[i];
+    return ((a && a._ts) || 0) - ((b && b._ts) || 0);
+  }
+  /* ce qui a été créé sur l'autre appareil après la dernière création du gagnant (nouvelle liste, fiche, poésie) est ajouté */
+  function mergeNew(win, lose) {
+    let added = false;
+    for (const k of ['lists', 'sheets', 'poems']) {
+      const A = win[k] || [], B = (lose && lose[k]) || [];
+      const ids = new Set(A.map(x => x.id));
+      const newest = A.reduce((m, x) => Math.max(m, x.createdAt || 0), 0);
+      B.forEach(x => { if (x && !ids.has(x.id) && (x.createdAt || 0) > newest) { A.push(x); added = true; } });
+      if (added) win[k] = A;
+    }
+    return added;
+  }
+  /* local contre distant -> { data, from: 'local' | 'remote', merged } */
+  function decide(local, remote) {
+    if (!remote) return { data: local, from: 'local', merged: false };
+    if (!local) return { data: remote, from: 'remote', merged: false };
+    const c = cmpAdvance(local, remote);
+    if (c >= 0) { const merged = mergeNew(local, remote); return { data: local, from: 'local', merged }; }
+    const merged = mergeNew(remote, local);
+    return { data: remote, from: 'remote', merged };
+  }
+  function adoptRemote(id, d) {
+    io.write(io.PKEY(id), d);
+    if (id === Store.currentId()) { UI.toast('☁️ Un autre appareil est plus avancé : je reprends sa progression'); setTimeout(() => location.reload(), 900); }
+  }
   async function pushProfile(id) {
     if (!user) return;
-    const d = io.read(io.PKEY(id)); if (!d) return;
+    let d = io.read(io.PKEY(id)); if (!d) return;
     if (!d._ts) { d._ts = Date.now(); io.write(io.PKEY(id), d); }
+    // avant d'écraser le compte, on vérifie qu'il n'est pas plus avancé ailleurs
+    try {
+      const snap = await FB.getDoc(uref('profiles', id));
+      const r0 = snap.exists() ? snap.data() : null;
+      if (r0 && !r0.deleted && r0.json) {
+        const remote = JSON.parse(r0.json); remote._ts = r0.ts;
+        const dec = decide(d, remote);
+        if (dec.from === 'remote') {
+          dec.data._ts = Math.max(r0.ts || 0, Date.now());
+          adoptRemote(id, dec.data);
+          if (!dec.merged) return;
+          d = dec.data;
+        } else if (dec.merged) { d._ts = Date.now(); io.write(io.PKEY(id), d); }
+      }
+    } catch (e) { console.warn('sync check', e); }
     await FB.setDoc(uref('profiles', id), { json: shrink(d), ts: d._ts, summary: summaryOf(id) });
   }
   async function pushGlobal() {
@@ -117,16 +170,23 @@
             continue;
           }
           const local = io.read(io.PKEY(id));
-          const lts = (local && local._ts) || 0;
-          if (!local || r.ts > lts) {
-            const d = JSON.parse(r.json); d._ts = r.ts;
+          const remoteD = JSON.parse(r.json); remoteD._ts = r.ts;
+          const dec = decide(local, remoteD);
+          if (dec.from === 'remote') {
+            const d = dec.data;
+            const same = local && JSON.stringify(Object.assign({}, local, { _ts: 0 })) === JSON.stringify(Object.assign({}, d, { _ts: 0 }));
+            d._ts = Math.max(r.ts || 0, (local && local._ts) || 0);
             io.write(io.PKEY(id), d);
             const i = G.profiles.findIndex(p => p.id === id);
             const sum = Object.assign({ id }, r.summary || {});
             if (i >= 0) G.profiles[i] = Object.assign(G.profiles[i], sum); else G.profiles.push(sum);
             gChanged = true;
-            if (id === G.current) reload = true;
-          } else if (lts > r.ts) pushes.push(pushProfile(id));
+            if (id === G.current && !same) reload = true;
+            if (dec.merged) pushes.push(pushProfile(id));
+          } else if (dec.merged || ((local && local._ts) || 0) !== r.ts || cmpAdvance(local, remoteD) > 0) {
+            if (dec.merged) { local._ts = Date.now(); io.write(io.PKEY(id), local); if (id === G.current) reload = true; }
+            pushes.push(pushProfile(id));
+          }
         }
         for (const p of G.profiles) if (!remote[p.id] && p.onboarded) pushes.push(pushProfile(p.id));
         // un appareil neuf a un profil vide : on le remplace par les enfants du compte
