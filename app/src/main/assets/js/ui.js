@@ -32,6 +32,8 @@
       const r = this.routes[name](screenEl, params || {});
       if (typeof r === 'function') cleanup = r;
       this.refreshHud();
+      screenEl.dataset.screen = name;
+      fitScreenSoon();
     },
     back() {
       if ($('#modal-root').children.length) { this.closeModal(); return true; }
@@ -361,6 +363,43 @@
   if (scrEl) new MutationObserver(fitSoon).observe(scrEl, { attributes: true, attributeFilter: ['class'] });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSoon);
   UI.fitWords = fitWords;
+
+  /* ---------- pas de défilement : un écran trop haut est réduit (zoom) pour tenir en entier ----------
+     Les écrans de lecture et de saisie de texte gardent leur taille (texte long, formulaires) ;
+     l'album de cartes se feuillette par pages et la pluie de mots a sa propre hauteur. */
+  const NOFIT = new Set(['reader', 'reading', 'poem', 'poemGame', 'poemEdit', 'sheetEdit', 'listEdit', 'parent', 'readCheck', 'rain', 'booster']);
+  function fitScreen() {
+    const scr = document.getElementById('screen');
+    const box = scr && scr.firstElementChild;
+    if (!box) return;
+    const fits = !NOFIT.has(scr.dataset.screen);
+    const z0 = parseFloat(box.style.zoom) || 1;
+    if (!fits) { if (z0 !== 1) box.style.zoom = ''; return; }
+    const cs = getComputedStyle(scr);
+    const avail = scr.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const natural = box.getBoundingClientRect().height / z0;
+    const z = natural > avail + 1 ? Math.max(.55, Math.floor(avail / natural * 100) / 100) : 1;
+    if (Math.abs(z - z0) > .005) box.style.zoom = z === 1 ? '' : z;
+  }
+  let fsT = 0;
+  function fitScreenSoon() { clearTimeout(fsT); fsT = setTimeout(fitScreen, 60); setTimeout(fitScreen, 450); }
+  addEventListener('resize', fitScreenSoon);
+  if (window.ResizeObserver) {
+    // le contenu change de hauteur (images chargées, onglet, compagnon…) : on réajuste
+    const ro2 = new ResizeObserver(fitScreenSoon);
+    new MutationObserver(() => { const b = document.getElementById('screen').firstElementChild; if (b && !b._fitObs) { b._fitObs = 1; ro2.observe(b); } })
+      .observe(document.getElementById('screen'), { childList: true });
+  }
+  UI.fitScreen = fitScreen;
+  /* une zone de taille fixe (onglet…) dont le contenu déborde : ses enfants sont réduits pour tenir */
+  UI.fitBox = function fitBox(box) {
+    if (!box) return;
+    requestAnimationFrame(() => {
+      const kids = [...box.children];
+      kids.forEach(k => k.style.zoom = '');
+      for (let i = 0, z = 1; i < 12 && box.scrollHeight > box.clientHeight + 1 && z > .5; i++) { z -= .05; kids.forEach(k => k.style.zoom = z); }
+    });
+  };
 
   window.UI = UI;
 })();

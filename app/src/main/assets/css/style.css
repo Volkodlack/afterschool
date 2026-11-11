@@ -1534,3 +1534,49 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .theme-poney .vsp-c.best { background: #fff4d6; border-color: #f5c542; }
 .input-switch .pix-btn.on { filter: brightness(1.08); outline: 3px solid var(--gold); }
 @media (max-height: 650px) and (min-width: 761px) { .voice-spell .vb-txt { display: none; } #screen.typing .voice-spell .vb-btn { padding: .25em 1em; } }
+
+/* ---------- écrans sans défilement ---------- */
+#screen { overscroll-behavior: contain; }
+#screen.fit { overflow: hidden; display: flex; flex-direction: column; }
+#screen.fit > * { flex: 1 1 auto; min-height: 0; }
+/* Mots de la semaine : en-tête, Mon parcours, onglets qui remplissent le reste */
+.lst { display: flex; flex-direction: column; gap: clamp(6px, 1.2vh, 14px); width: min(100%, 1200px); margin: 0 auto; min-height: 0; }
+.lst .list-head { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+.lst .list-switch { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden; flex-wrap: nowrap; }
+.lst .list-switch .pix-btn { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lst .adv-tile { flex: 0 0 auto; min-height: 0; padding: clamp(8px, 1.6vh, 18px); }
+.lst .adv-tile .ic { width: clamp(40px, 7vh, 80px); height: clamp(40px, 7vh, 80px); }
+.lst-tabs { display: flex; gap: 6px; justify-content: center; flex: 0 0 auto; }
+.lst-tabs .pix-btn { flex: 1 1 0; max-width: 260px; font-size: clamp(14px, 2.2vh, 20px); padding: .45em .4em; white-space: nowrap; }
+.lst-tabs .pix-btn.on { filter: brightness(1.1); outline: 3px solid var(--gold); outline-offset: 1px; }
+.lst-body { flex: 1 1 auto; min-height: 0; position: relative; }
+.lst-pane { display: none; position: absolute; inset: 0; overflow: hidden; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); align-items: stretch; }
+.lst-pane.on { display: flex; }
+.lst-pane[data-p=mots] { background: var(--panel, #fff8e8); border: 4px solid var(--ink); padding: clamp(8px, 1.6vh, 18px); justify-content: center; }
+.theme-poney .lst-pane[data-p=mots] { background: rgba(255,255,255,.92); border: 3px solid #ffc2dc; border-radius: 24px; }
+.lst-pane .chips { justify-content: center; }
+.lst-steps { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.lst-step { font-weight: 700; font-size: clamp(12px, 1.9vh, 17px); padding: .2em .6em; border: 2px solid rgba(43,29,18,.35); background: #fff; white-space: nowrap; }
+.lst-step.st0 { background: #eaf7df; } .lst-step.st1 { background: #e3edff; } .lst-step.st2 { background: #fff2d6; } .lst-step.st3 { background: #fff7b8; }
+.theme-poney .lst-step { border-radius: 999px; border-color: #ffc2dc; }
+.lst-mastery { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: clamp(13px, 2vh, 18px); }
+.lst-mastery .progress { flex: 1; margin: 0; }
+.lst-hint { text-align: center; margin: 0; font-size: clamp(12px, 1.8vh, 16px); }
+.lst-pane[data-p=quete] > * { flex: 1 1 auto; min-height: 0; margin: 0; }
+.lst-pane[data-p=quete] .quest-panel { display: flex; flex-direction: column; }
+.lst-pane[data-p=quete] .quest-cards { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; }
+.lst-pane[data-p=quete] .quest-slot { height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; container-type: size; }
+/* la carte garde ses proportions et prend la plus grande taille possible dans sa case */
+.lst-pane[data-p=quete] .quest-slot > :first-child { width: min(100cqw, (100cqh - 3.6em) * 5 / 7); height: auto; aspect-ratio: 5 / 7; flex: 0 0 auto; }
+.lst-pane[data-p=quete] .quest-step { font-size: clamp(11px, 1.8vh, 16px); text-align: center; }
+.lst-pane[data-p=jeux] .games-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: clamp(6px, 1.2vh, 14px); }
+.lst-pane[data-p=jeux] .game-tile { min-height: 0; height: 100%; padding: 6px; font-size: clamp(13px, 2.1vh, 22px); gap: 4px; overflow: hidden; }
+.lst-pane[data-p=jeux] .game-tile .ic { width: clamp(30px, 6vh, 80px); height: clamp(30px, 6vh, 80px); }
+@media (max-width: 760px) {
+  .lst-pane[data-p=jeux] .games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lst .adv-tile .sub { display: none; }
+
+}
+@media (orientation: portrait) {
+  .lst-pane[data-p=quete] .quest-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; }
+}

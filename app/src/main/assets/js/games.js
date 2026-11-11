@@ -728,30 +728,48 @@
     UI.setTitle(l.title);
     const pct = Math.round(Store.listMastery(l) * 100);
     const lists = Store.lists();
-    root.appendChild(el(html`
-      <div class="center-col">
+    /* écran sans défilement : en-tête, gros bouton « Mon parcours », puis trois onglets qui remplissent le reste */
+    const tab0 = UI._listTab || 'mots';
+    const page = el(html`
+      <div class="lst">
         <div class="list-head">
           <div class="list-switch">${lists.slice(0, 8).map(x => `<button class="pix-btn small ${x.id === l.id ? 'on' : ''}" data-l="${x.id}">${esc(x.title)}</button>`).join('')}</div>
-          <button class="pix-btn small gold" data-a="new">${Pixel.svg('plus')} Nouvelle liste</button>
+          <button class="pix-btn small gold" data-a="new">${Pixel.svg('plus')} Liste</button>
         </div>
-        <div data-z="quest"></div>
         <button class="tile adv-tile" data-a="adv" style="background-image:url(${Pixel.texture('gemme')})">
-          <span class="ic">${Pixel.svg('sword')}</span><span><span class="t1">Mon parcours</span><span class="sub">Chaque mot avec le jeu qui lui convient</span></span>
+          <span class="ic">${Pixel.svg('sword')}</span><span><span class="t1">Mon parcours</span><span class="sub">5 minutes · chaque mot avec le jeu qui lui convient</span></span>
         </button>
-        <div class="panel word-panel">
-          <h3>Mes ${l.words.length} mots <span class="muted" style="font-weight:500">· touche un mot pour l'entendre</span></h3>
-          <div class="chips" style="margin-top:12px">${l.words.map((w, i) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${i * 0.04}s"><span>${FR.colorize(w)}</span>${masteryStars(w)}</span>`).join('')}</div>
-          ${pathPanel(l.words)}
-          <div class="progress"><div style="width:${pct}%"></div></div>
-          <div class="muted" style="margin-top:6px;font-size:clamp(15px,2.2vmin,20px)">Maîtrise : ${pct}%</div>
+        <div class="lst-tabs">
+          <button class="pix-btn small" data-t="mots">📘 Mes mots</button>
+          <button class="pix-btn small" data-t="quete">🏆 Quête</button>
+          <button class="pix-btn small" data-t="jeux">🎮 Jeux</button>
         </div>
-        <h2 class="pix-title">Mini-jeux</h2>
-        <div class="games-grid">${Object.entries(GAMES).map(([k, g], i) => `
-          <button class="tile game-tile" data-g="${k}" style="background-image:url(${Pixel.texture(g.tex)});animation-delay:${i * 0.06}s">
-            <span class="ic">${Pixel.svg(g.icon)}</span><span>${g.name}</span><span class="sub">${g.desc}</span></button>`).join('')}
+        <div class="lst-body">
+          <div class="lst-pane" data-p="mots">
+            <div class="chips">${l.words.map((w, i) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${i * 0.04}s"><span>${FR.colorize(w)}</span>${masteryStars(w)}</span>`).join('')}</div>
+            <div class="lst-steps">${Store.STAGES.map((S, i) => `<span class="lst-step st${i}">${S.icon} ${S.name} <b>${l.words.filter(w => Store.mastery(w) === i).length}</b></span>`).join('')}</div>
+            <div class="lst-mastery"><div class="progress"><div style="width:${pct}%"></div></div><span>Maîtrise ${pct} %</span></div>
+            <p class="muted lst-hint">Touche un mot pour l'entendre</p>
+          </div>
+          <div class="lst-pane" data-p="quete"><div data-z="quest"></div></div>
+          <div class="lst-pane" data-p="jeux"><div class="games-grid">${Object.entries(GAMES).map(([k, g], i) => `
+            <button class="tile game-tile" data-g="${k}" style="background-image:url(${Pixel.texture(g.tex)});animation-delay:${i * 0.04}s">
+              <span class="ic">${Pixel.svg(g.icon)}</span><span>${g.name}</span></button>`).join('')}
+          </div></div>
         </div>
-      </div>`));
+      </div>`);
+    root.appendChild(page);
+    root.classList.add('full', 'fit');
+    const showTab = t => {
+      UI._listTab = t;
+      page.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+      page.querySelectorAll('.lst-pane').forEach(p => p.classList.toggle('on', p.dataset.p === t));
+      if (UI.fitBox && t === 'mots') UI.fitBox(page.querySelector('.lst-pane.on'));
+    };
+    page.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SFX.play('pop'); showTab(b.dataset.t); });
     if (window.Quests) { root.querySelector('[data-z=quest]').replaceWith(Quests.panel(l)); setTimeout(() => Quests.flush(), 450); }
+    else page.querySelector('[data-t=quete]').remove();
+    showTab(window.Quests || tab0 !== 'quete' ? tab0 : 'mots');
     root.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { if (b.dataset.l !== l.id) UI.go('list', { listId: b.dataset.l }, { replace: true }); });
     root.querySelector('[data-a=new]').onclick = async () => { if (await UI.parentGate()) UI.go('listEdit', {}); };
     root.querySelectorAll('.chip').forEach(c => c.onclick = () => UI.say(c.dataset.w));
@@ -762,6 +780,7 @@
       else if (g === 'memory' || g === 'motsmeles') UI.go(g, { title: GAMES[g].name, words: l.words });
       else UI.go('session', { title: GAMES[g].name, game: g, words: l.words });
     });
+    return () => root.classList.remove('full', 'fit');
   });
 
   function emptyLists(root) {
