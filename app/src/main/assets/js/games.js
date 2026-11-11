@@ -424,15 +424,31 @@
     const area = el('<div class="game game-area" style="width:100%"></div>');
     wrap.append(top, area);
     root.appendChild(wrap);
-    const rounds = cfg.rounds;
-    rounds.forEach(() => prog.appendChild(el('<i></i>')));
+    const rounds = cfg.rounds.slice();
+    const firstPass = rounds.length;
+    /* partie chronométrée (parcours, révision) : environ cfg.timed secondes, quel que soit le nombre de mots ;
+       chaque mot est vu au moins une fois, puis on enchaîne d'autres tours avec d'autres mini-jeux */
+    const t0 = Date.now(), T = (cfg.timed || 0) * 1000;
+    let tick = 0;
+    if (T) {
+      prog.classList.add('timed');
+      prog.innerHTML = '<span class="tb"><span></span></span>';
+      const bar = prog.querySelector('.tb span');
+      tick = setInterval(() => { if (!prog.isConnected) return clearInterval(tick); bar.style.width = Math.min(100, (Date.now() - t0) / T * 100) + '%'; }, 1000);
+    } else rounds.forEach(() => prog.appendChild(el('<i></i>')));
     let idx = 0, firstTry = 0, alive = true;
     const promos = [];
     const results = [];
     function next() {
       if (!alive) return;
-      prog.querySelectorAll('i').forEach((d, k) => d.className = k < idx ? 'done' : k === idx ? 'cur' : '');
-      if (idx >= rounds.length) return finish();
+      if (T) {
+        const late = Date.now() - t0 >= T;
+        if (late && idx >= firstPass) return finish();
+        if (idx >= rounds.length) rounds.push(...cfg.more(rounds));
+      } else {
+        prog.querySelectorAll('i').forEach((d, k) => d.className = k < idx ? 'done' : k === idx ? 'cur' : '');
+        if (idx >= rounds.length) return finish();
+      }
       const r = rounds[idx];
       root.classList.remove('typing', 'full');
       UI.setTitle(cfg.title + ' — ' + GAMES[r.game].name);
@@ -448,19 +464,21 @@
       }, root);
     }
     function finish() {
+      clearInterval(tick);
       // quêtes : le parcours est lancé, et les étapes des mots ont peut-être avancé
       let quest = [];
       if (window.Quests) { if (cfg.listId) Quests.markStarted(cfg.listId); quest = Quests.check(); }
-      const ratio = firstTry / rounds.length;
+      const played = results.length || 1;
+      const ratio = firstTry / played;
       const stars = ratio >= .9 ? 3 : ratio >= .6 ? 2 : 1;
-      // la monnaie se gagne seulement dans « Mon parcours » (et la révision), pas dans les mini-jeux
-      const gems = cfg.paid ? results.reduce((a, r) => a + (r.errors === 0 ? 3 : 1), 0) : 0;
-      const xp = rounds.length * 10 + firstTry * 5;
+      // la monnaie se gagne seulement dans « Mon parcours » (et la révision), pas dans les mini-jeux : selon les étoiles
+      const gems = cfg.paid ? [0, 50, 100, 150][stars] : 0;
+      const xp = played * 10 + firstTry * 5;
       const hard = results.filter(r => r.errors > 0).map(r => `<b style="font-family:Lecture">${esc(r.word)}</b>`);
       UI.results({
         title: stars === 3 ? 'Incroyable !' : stars === 2 ? 'Bien joué !' : 'Continue comme ça !',
-        stars, gems, xp,
-        lines: [`${firstTry} mot${firstTry > 1 ? 's' : ''} sur ${rounds.length} réussi${firstTry > 1 ? 's' : ''} du premier coup`]
+        stars, gems, xp, petStars: gems ? stars * 5 : 0, // étoiles du compagnon : 5 / 10 / 15, comme avant
+        lines: [`${firstTry} réponse${firstTry > 1 ? 's' : ''} sur ${played} réussie${firstTry > 1 ? 's' : ''} du premier coup`]
           .concat(hard.length ? ['À revoir : ' + hard.join(', ')] : [])
           .concat(window.Quests && Quests.pendingCount && Quests.pendingCount() ? ['🏆 <b>Nouvelle carte de quête à découvrir !</b>'] : [])
           .concat(promos.length ? [promos.map(pr => `<span class="promo">${Store.STAGES[pr.to].icon} <b style="font-family:Lecture">${esc(pr.word)}</b> passe en <b>${Store.STAGES[pr.to].name}</b> !</span>`).join('<br>')] : []),
@@ -469,7 +487,7 @@
       });
     }
     next();
-    return () => { alive = false; };
+    return () => { alive = false; clearInterval(tick); };
   }
 
   /* ---------- rain game ---------- */
@@ -570,6 +588,27 @@
   function adventureRounds(words) {
     return FR.shuffle(words).map(w => { const pool = BY_STAGE[Store.mastery(w)]; return { game: pool[Math.floor(Math.random() * pool.length)], word: w }; });
   }
+  const SESSION_SECONDS = 300; // un parcours dure environ 5 minutes
+  /* tour suivant d'une partie chronométrée : chaque mot revient avec un autre mini-jeu adapté à son étape */
+  function moreRounds(words) {
+    return done => {
+      const used = {}; done.forEach(r => (used[r.word] = used[r.word] || []).push(r.game));
+      const allGames = [...new Set(BY_STAGE.flat())];
+      let list = FR.shuffle(words);
+      if (list.length > 1 && done.length && list[0] === done[done.length - 1].word) list.push(list.shift());
+      let prevGame = done.length ? done[done.length - 1].game : null;
+      return list.map(w => {
+        let pool = BY_STAGE[Store.mastery(w)].filter(g => g !== prevGame);
+        const fresh = pool.filter(g => !(used[w] || []).includes(g));
+        if (fresh.length) pool = fresh;
+        else { const others = allGames.filter(g => g !== prevGame && !(used[w] || []).includes(g) && Store.mastery(w) > 0); if (others.length && Math.random() < .5) pool = others; }
+        if (!pool.length) pool = BY_STAGE[Store.mastery(w)];
+        const game = pool[Math.floor(Math.random() * pool.length)];
+        prevGame = game;
+        return { game, word: w };
+      });
+    };
+  }
 
   UI.register('session', (root, p) => {
     const again = () => UI.go('session', p, { replace: true });
@@ -577,8 +616,9 @@
     if (p.mode === 'adventure') rounds = adventureRounds(p.words);
     else if (p.mode === 'revision') rounds = adventureRounds(p.words);
     else rounds = buildRounds(p.words, p.game);
-    if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, paid: true, again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
-    return runSession(root, { title: p.title, rounds, again, paid: p.mode === 'adventure', listId: p.mode === 'adventure' ? p.listId : null });
+    if (p.mode === 'revision') return runSession(root, { title: p.title, rounds, paid: true, timed: SESSION_SECONDS, more: moreRounds(p.words), again: () => UI.go('session', Object.assign({}, p, { words: Store.revisionWords(p.words.length) }), { replace: true }) });
+    if (p.mode === 'adventure') return runSession(root, { title: p.title, rounds, again, paid: true, timed: SESSION_SECONDS, more: moreRounds(p.words), listId: p.listId });
+    return runSession(root, { title: p.title, rounds, again, paid: false });
   });
 
   /* ---------- screens: word lists ---------- */

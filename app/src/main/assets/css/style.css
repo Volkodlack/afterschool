@@ -213,7 +213,7 @@ h2.pix-title { font-size: clamp(22px, 4vmin, 40px); color: #fff; margin: .2em 0 
 .game-progress i.cur { background: var(--gold); animation: badge .8s steps(2) infinite; }
 .prompt { font-size: clamp(18px, 3.2vmin, 32px); font-weight: 700; color: #fff; text-align: center;
   text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
-.word-big { font-family: "Lecture"; font-weight: 700; font-size: clamp(44px, 11vmin, 120px); background: #fff; border: 5px solid var(--ink);
+.word-big { max-width: 100%; box-sizing: border-box; white-space: nowrap; font-family: "Lecture"; font-weight: 700; font-size: clamp(44px, 11vmin, 120px); background: #fff; border: 5px solid var(--ink);
   padding: .1em .5em; box-shadow: 0 8px 0 rgba(43,29,18,.4); letter-spacing: .03em; animation: pop .5s steps(5) both; position: relative; }
 .word-big.covered::after { content: ""; position: absolute; inset: -5px; background: var(--dirt);
   background-image: repeating-linear-gradient(90deg, transparent 0 18px, rgba(0,0,0,.15) 18px 22px), repeating-linear-gradient(0deg, transparent 0 18px, rgba(0,0,0,.12) 18px 22px);
@@ -1470,3 +1470,13 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .pet-scene.has-bg.bg-night .night-sky .moon { display: none; }
 .pet-scene.has-bg::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 60%, rgba(0,0,0,.18)); }
 .pet.p3, .theme-poney .pet.p3 { height: 70%; } .pet.p3.stage-1, .theme-poney .pet.p3.stage-1 { height: 62%; } .pet.p3.stage-3, .theme-poney .pet.p3.stage-3 { height: 78%; }
+
+/* partie chronométrée (≈ 5 min) : barre de temps à la place des pastilles */
+.game-progress.timed { width: min(70%, 420px); }
+.game-progress .tb { display: block; width: 100%; height: clamp(14px, 2.2vmin, 22px); border: 3px solid var(--ink); background: rgba(255,255,255,.6); overflow: hidden; }
+.game-progress .tb span { display: block; height: 100%; width: 0; background: var(--gem); transition: width 1s linear; }
+.theme-poney .game-progress .tb { border: 3px solid #ffc2dc; border-radius: 999px; }
+.theme-poney .game-progress .tb span { background: linear-gradient(90deg, #ffb3d1, #c9a8ff); border-radius: 999px; }
+/* rien ne doit élargir la zone de jeu au-delà de l'écran (mots longs sur téléphone) */
+.game.center-col, .game-area { max-width: 100%; min-width: 0; box-sizing: border-box; }
+#screen.typing .game-area { grid-template-columns: minmax(0, 1fr); }

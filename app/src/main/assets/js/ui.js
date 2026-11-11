@@ -275,9 +275,9 @@
     },
 
     /* ---------- end-of-game results ---------- */
-    results({ title, stars, gems, xp, lines = [], onAgain, onDone }) {
+    results({ title, stars, gems, xp, petStars, lines = [], onAgain, onDone }) {
       if (document.querySelector('.modal .result-stars')) return;
-      const reward = Store.addReward(gems, xp);
+      const reward = Store.addReward(gems, xp, petStars);
       SFX.play(stars >= 2 ? 'win' : 'good');
       const m = UI.modal(html`
         <div class="levelup">
@@ -327,6 +327,28 @@
   window.AS_back = () => UI.back();
   window.AS_pause = () => { if (UI.onPause) UI.onPause(); if (window.Pet) Pet.sync(); };
 
+
+  /* les grands mots (« des chatouilles ») ne doivent jamais dépasser l'écran : on réduit la police jusqu'à ce qu'ils tiennent */
+  function fitWords() {
+    document.querySelectorAll('.word-big').forEach(w => {
+      if (!w.isConnected || !w.offsetParent) return;
+      w.style.fontSize = '';
+      const scr = document.getElementById('screen');
+      const room = Math.min(w.parentElement ? w.parentElement.clientWidth : innerWidth, scr ? scr.clientWidth : innerWidth, innerWidth) - 16;
+      let fs = parseFloat(getComputedStyle(w).fontSize), n = 0;
+      while (w.getBoundingClientRect().width > room && fs > 16 && n++ < 30) { fs *= .92; w.style.fontSize = fs + 'px'; }
+    });
+  }
+  let fitRaf = 0;
+  const fitSoon = () => { if (!fitRaf) fitRaf = requestAnimationFrame(() => { fitRaf = 0; fitWords(); }); };
+  new MutationObserver(muts => { if (muts.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.matches('.word-big') || n.querySelector('.word-big'))))) fitSoon(); })
+    .observe(document.body, { childList: true, subtree: true });
+  addEventListener('resize', fitSoon);
+  // le mode écriture (#screen.typing) change la taille des mots : on réajuste
+  const scrEl = document.getElementById('screen');
+  if (scrEl) new MutationObserver(fitSoon).observe(scrEl, { attributes: true, attributeFilter: ['class'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSoon);
+  UI.fitWords = fitWords;
 
   window.UI = UI;
 })();

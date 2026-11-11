@@ -231,9 +231,9 @@
       while (xp >= need) { xp -= need; lvl++; need = 100 + (lvl - 1) * 40; }
       return { lvl, cur: xp, need };
     },
-    addReward(gems, xp) {
+    addReward(gems, xp, petStars) {
       const before = this.level().lvl;
-      const stars = gems > 0 ? Math.max(1, Math.round(gems / 2)) : 0;
+      const stars = petStars != null ? petStars : gems > 0 ? Math.max(1, Math.round(gems / 2)) : 0;
       setTimeout(() => window.Pet && Pet.sync(), 50);
       data.stats.gems += gems; data.stats.xp += xp; data.stats.stars = (data.stats.stars || 0) + stars;
       this.markDay();
