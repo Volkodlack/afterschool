@@ -1,4 +1,4 @@
-/* Card collection: 100 original pixel creatures, boosters bought with emeralds (max 2 per week). */
+/* Card collection: 100 original pixel creatures, boosters bought with emeralds (price doubles with each booster of the week, max 10 per week). */
 (function () {
   const { html, el } = UI;
   const esc = FR.esc;
@@ -269,8 +269,10 @@
     return d.cardsT[Theme.id];
   }
   const opened = () => { state(); return Store.data.cardsWeek.opened || 0; };
-  const cost = () => Math.round(BOOSTER_BASE * Math.pow(1.25, Math.min(opened(), 30)) / 5) * 5;
-  const canOpen = () => Store.data.stats.gems >= cost();
+  const WEEK_MAX = 10;
+  const cost = () => BOOSTER_BASE * Math.pow(2, Math.min(opened(), WEEK_MAX)); // 125, 250, 500, 1000… remis à 125 le lundi
+  const weekFull = () => opened() >= WEEK_MAX;
+  const canOpen = () => !weekFull() && Store.data.stats.gems >= cost();
   const ownedCount = () => Object.keys(state().owned).length;
 
   function draw() {
@@ -329,11 +331,11 @@
         <div style="flex:1;min-width:220px">
           <div style="font-size:clamp(20px,3.4vmin,32px);font-weight:700">Ma collection : ${own} / ${CARDS.length}</div>
           <div class="progress"><div style="width:${own / CARDS.length * 100}%"></div></div>
-          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix augmente un peu à chaque fois. Il redescend lundi !` : 'Le prix augmente un peu à chaque booster ouvert dans la semaine.'}</div>
+          <div style="margin-top:10px;font-size:clamp(14px,2.2vmin,20px)">${n >= WEEK_MAX ? `Tu as ouvert ${WEEK_MAX} boosters cette semaine, c'est le maximum. Rendez-vous lundi !` : n ? `Déjà ${n} booster${n > 1 ? 's' : ''} cette semaine : le prix double à chaque fois. Il redescend lundi !` : `Le prix double à chaque booster ouvert dans la semaine (${WEEK_MAX} au maximum).`}</div>
         </div>
-        <button class="pix-btn gold big" data-a="open" ${gems >= price ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price} ${Theme.t.cur}</span></button>
+        <button class="pix-btn gold big" data-a="open" ${gems >= price && n < WEEK_MAX ? '' : 'disabled'}>Ouvrir un booster<br><span style="font-size:.7em;display:inline-flex;align-items:center;gap:4px"><span style="width:1.2em;display:inline-flex">${Pixel.svg('gem')}</span>${price} ${Theme.t.cur}</span></button>
       </div>
-      ${gems < price ? `<p class="prompt">Encore ${price - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
+      ${n < WEEK_MAX && gems < price ? `<p class="prompt">Encore ${price - gems} ${Theme.t.cur} à gagner en jouant pour ouvrir un booster !</p>` : ''}
       <div class="tabs set-tabs" style="margin-top:var(--gap)">
         ${[1, 2].map(k => `<button class="pix-btn ${curSet === k ? 'on' : ''}" data-set="${k}">${SETS[k].name} <small>${ownIn(k)}/100</small></button>`).join('')}
         ${window.Quests ? `<button class="pix-btn ${curSet === 'q' ? 'on' : ''} quest-tab" data-set="q">🏆 Quêtes <small>${Quests.ownedCount()}/${Quests.QCARDS.length}</small></button>` : ''}
@@ -360,6 +362,7 @@
     wrap.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { curSet = b.dataset.set === 'q' ? 'q' : +b.dataset.set; filter = 'all'; UI.go('cards', {}, { replace: true }); });
     wrap.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; UI.go('cards', {}, { replace: true }); });
     wrap.querySelector('[data-a=open]').onclick = async () => {
+      if (weekFull()) { UI.toast(`Maximum ${WEEK_MAX} boosters par semaine : rendez-vous lundi !`); return; }
       if (Store.data.stats.gems < cost()) { UI.toast(`Il te faut ${cost()} ${Theme.t.cur}`); return; }
       if (!(await UI.confirm(`Ouvrir un booster pour ${cost()} ${Theme.t.cur} ?`, 'Oui !', 'Non'))) return;
       UI.go('booster', {}, { replace: true });
@@ -391,7 +394,7 @@
     UI.setTitle('Booster !');
     const st = state();
     const price = cost();
-    if (Store.data.stats.gems < price) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
+    if (weekFull() || Store.data.stats.gems < price) { setTimeout(() => UI.go('cards', {}, { replace: true }), 0); return; }
     // pay and draw immediately so leaving mid-animation never loses cards
     Store.spendGems(price);
     Store.data.cardsWeek.opened++; st.total = (st.total || 0) + 1;
