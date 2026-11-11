@@ -336,13 +336,25 @@
       const scr = document.getElementById('screen');
       const room = Math.min(w.parentElement ? w.parentElement.clientWidth : innerWidth, scr ? scr.clientWidth : innerWidth, innerWidth) - 16;
       let fs = parseFloat(getComputedStyle(w).fontSize), n = 0;
-      while (w.getBoundingClientRect().width > room && fs > 16 && n++ < 30) { fs *= .92; w.style.fontSize = fs + 'px'; }
+      // trop large pour l'écran, ou débordant de son propre cadre (le cadre est limité à la largeur de l'écran)
+      const over = () => w.getBoundingClientRect().width > room || w.scrollWidth > w.clientWidth + 1;
+      while (over() && fs > 14 && n++ < 40) { fs *= .92; w.style.fontSize = fs + 'px'; }
     });
   }
   let fitRaf = 0;
   const fitSoon = () => { if (!fitRaf) fitRaf = requestAnimationFrame(() => { fitRaf = 0; fitWords(); }); };
-  new MutationObserver(muts => { if (muts.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.matches('.word-big') || n.querySelector('.word-big'))))) fitSoon(); })
-    .observe(document.body, { childList: true, subtree: true });
+  // chaque grand mot est surveillé : police chargée en retard, lettres qui s'envolent, écran qui change de taille…
+  const ro = window.ResizeObserver ? new ResizeObserver(fitSoon) : null;
+  new MutationObserver(muts => {
+    let hit = false;
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      const ws = n.matches('.word-big') ? [n] : [...n.querySelectorAll('.word-big')];
+      ws.forEach(w => { hit = true; if (ro) { ro.observe(w); if (w.parentElement) ro.observe(w.parentElement); } });
+    }));
+    if (hit) { fitSoon(); setTimeout(fitSoon, 300); }
+  }).observe(document.body, { childList: true, subtree: true });
+  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', fitSoon);
   addEventListener('resize', fitSoon);
   // le mode écriture (#screen.typing) change la taille des mots : on réajuste
   const scrEl = document.getElementById('screen');
