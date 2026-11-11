@@ -15,6 +15,15 @@
   const emit = () => listeners.forEach(f => { try { f(state); } catch (e) {} });
   let auth = null, db = null, user = null, syncing = null, pushT = 0, globalT = 0;
 
+  /* dernière version échangée avec le compte, par enfant : r = date de la sauvegarde en ligne, l = date locale à ce moment-là.
+     Sert à savoir QUI a changé depuis : si un seul appareil a joué, sa sauvegarde (la plus récente) est reprise telle quelle. */
+  const BASEKEY = 'afterschool.cloud.base';
+  const base = (() => { try { return JSON.parse(localStorage.getItem(BASEKEY) || '{}'); } catch (e) { return {}; } })();
+  const setBase = (id, r, l) => { base[id] = { r: r || 0, l: l || 0 }; try { localStorage.setItem(BASEKEY, JSON.stringify(base)); } catch (e) {} };
+  /* pendant un jeu, une dictée, une lecture… on ne recharge pas l'appli : la mise à jour attend l'écran suivant */
+  const BUSY = new Set(['session', 'rain', 'dictation', 'memory', 'motsmeles', 'reader', 'readCheck', 'poemGame', 'booster', 'welcome', 'listEdit', 'sheetEdit', 'poemEdit', 'adopt']);
+  const busy = () => { const c = window.UI && UI.current && UI.current(); return !!(c && BUSY.has(c.name)) || !!document.querySelector('#modal-root > *'); };
+  let pending = false;
   const up = (() => { try { return JSON.parse(localStorage.getItem(UPKEY) || '{}'); } catch (e) { return {}; } })();
   const saveUp = () => { try { localStorage.setItem(UPKEY, JSON.stringify(up)); } catch (e) {} };
   const syncable = (id, v) => typeof v === 'string' && !AUDIO.test(id) && v.startsWith('data:');
@@ -87,38 +96,54 @@
   /* local contre distant -> { data, from: 'local' | 'remote', merged }
      progression (niveau, mots, cartes, quêtes) : l'appareil où l'enfant est le plus avancé (expérience) ;
      réglages parent et compagnon : la version la plus récente ; nouvelles listes : ajoutées */
-  function decide(local, remote) {
+  function decide(local, remote, id) {
     if (!remote) return { data: local, from: 'local', merged: false };
     if (!local) return { data: remote, from: 'remote', merged: false };
+    const b = id && base[id];
+    if (b) {
+      const localChanged = (local._ts || 0) > b.l, remoteChanged = (remote._ts || 0) > b.r;
+      // un seul appareil a changé quelque chose : c'est sa sauvegarde, la plus récente, qui compte
+      if (remoteChanged && !localChanged) return { data: remote, from: 'remote', merged: false };
+      if (!remoteChanged) return { data: local, from: 'local', merged: false };
+      // les deux ont changé (deux appareils utilisés hors connexion) : le plus avancé garde la main, rien de neuf n'est perdu
+    }
     const c = cmpAdvance(local, remote);
     const [win, lose, from] = c >= 0 ? [local, remote, 'local'] : [remote, local, 'remote'];
     const m1 = mergeNew(win, lose), m2 = takeLatest(win, lose);
     return { data: win, from, merged: m1 || m2 };
   }
-  function adoptRemote(id, d) {
-    io.write(io.PKEY(id), d);
-    if (id === Store.currentId()) { UI.toast('☁️ Un autre appareil est plus avancé : je reprends sa progression'); setTimeout(() => location.reload(), 900); }
+  function adoptRemote(id, d, rts) {
+    if (id === Store.currentId() && busy()) { pending = true; return false; }
+    io.write(io.PKEY(id), d); setBase(id, rts, d._ts);
+    if (id === Store.currentId()) { UI.toast('☁️ Dernière sauvegarde reprise depuis un autre appareil'); setTimeout(() => location.reload(), 900); }
+    return true;
   }
   async function pushProfile(id) {
     if (!user) return;
     let d = io.read(io.PKEY(id)); if (!d) return;
     if (!d._ts) { d._ts = Date.now(); io.write(io.PKEY(id), d); }
+    let rts = 0;
     // avant d'écraser le compte, on vérifie qu'il n'est pas plus avancé ailleurs
     try {
       const snap = await FB.getDoc(uref('profiles', id));
       const r0 = snap.exists() ? snap.data() : null;
       if (r0 && !r0.deleted && r0.json) {
         const remote = JSON.parse(r0.json); remote._ts = r0.ts;
-        const dec = decide(d, remote);
+        const dec = decide(d, remote, id);
         if (dec.from === 'remote') {
-          dec.data._ts = Math.max(r0.ts || 0, Date.now());
-          adoptRemote(id, dec.data);
-          if (!dec.merged) return;
+          if (!dec.merged) { dec.data._ts = Math.max(r0.ts || 0, (d._ts || 0)); adoptRemote(id, dec.data, r0.ts); return; }
+          dec.data._ts = Math.max(r0.ts || 0, Date.now()) + 1;
+          if (!adoptRemote(id, dec.data, r0.ts)) return;
           d = dec.data;
         } else if (dec.merged) { d._ts = Date.now(); io.write(io.PKEY(id), d); }
+        else if (base[id] && (d._ts || 0) <= base[id].l && (r0.ts || 0) <= base[id].r) return; // déjà à jour
+        // la sauvegarde envoyée doit toujours être « plus récente » que celle du compte, même si l'horloge de l'appareil retarde
+        rts = Math.max(Date.now(), (r0.ts || 0) + 1);
       }
-    } catch (e) { console.warn('sync check', e); }
-    await FB.setDoc(uref('profiles', id), { json: shrink(d), ts: d._ts, summary: summaryOf(id) });
+    } catch (e) { console.warn('sync check', e); return; }
+    if (!rts) rts = Date.now();
+    await FB.setDoc(uref('profiles', id), { json: shrink(d), ts: rts, summary: summaryOf(id) });
+    setBase(id, rts, d._ts);
   }
   async function pushGlobal() {
     if (!user) return;
@@ -181,19 +206,21 @@
           }
           const local = io.read(io.PKEY(id));
           const remoteD = JSON.parse(r.json); remoteD._ts = r.ts;
-          const dec = decide(local, remoteD);
+          const dec = decide(local, remoteD, id);
           if (dec.from === 'remote') {
             const d = dec.data;
             const same = local && JSON.stringify(Object.assign({}, local, { _ts: 0 })) === JSON.stringify(Object.assign({}, d, { _ts: 0 }));
+            // enfant en train de jouer sur cet appareil : on attend la fin de l'exercice pour reprendre la sauvegarde
+            if (id === G.current && !same && busy()) { pending = true; continue; }
             d._ts = Math.max(r.ts || 0, (local && local._ts) || 0);
-            io.write(io.PKEY(id), d);
+            io.write(io.PKEY(id), d); setBase(id, r.ts, d._ts);
             const i = G.profiles.findIndex(p => p.id === id);
             const sum = Object.assign({ id }, r.summary || {});
             if (i >= 0) G.profiles[i] = Object.assign(G.profiles[i], sum); else G.profiles.push(sum);
             gChanged = true;
             if (id === G.current && !same) reload = true;
             if (dec.merged) pushes.push(pushProfile(id));
-          } else if (dec.merged || ((local && local._ts) || 0) !== r.ts || cmpAdvance(local, remoteD) > 0) {
+          } else if (dec.merged || !base[id] || (local._ts || 0) > base[id].l) {
             if (dec.merged) { local._ts = Date.now(); io.write(io.PKEY(id), local); if (id === G.current) reload = true; }
             pushes.push(pushProfile(id));
           }
@@ -223,6 +250,7 @@
           if (syncable(k, v)) { try { await pushBlob(k, v); } catch (e) { console.warn('blob', k, e); } }
           else { up[k] = 1; saveUp(); }
         }
+        if (!pending || !busy()) pending = false;
         state.status = 'ok'; state.last = Date.now();
         try { localStorage.setItem('afterschool.cloud.last', String(state.last)); } catch (e) {}
         emit();
@@ -246,7 +274,7 @@
   }
   Store.onChange((what, a, b) => {
     if (!user) return;
-    if (what === 'save') { clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; pushProfile(Store.currentId()).then(() => { state.last = Date.now(); emit(); }).catch(e => console.warn(e)); }, 4000); }
+    if (what === 'save') { clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; pushProfile(Store.currentId()).then(() => { state.last = Date.now(); emit(); }).catch(e => console.warn(e)); }, 1500); }
     if (what === 'global') {
       const G = Store.global;
       if (G.pin && G.pin !== G._lastPin) { G.pinTs = Date.now(); G._lastPin = G.pin; io.write(io.GKEY, G); }
@@ -256,10 +284,23 @@
     if (what === 'blobPut') pushBlob(a, b).catch(e => console.warn(e));
     if (what === 'blobDel') { delete up[a]; saveUp(); if (!AUDIO.test(a)) FB.deleteDoc(uref('blobs', a)).catch(() => {}); }
   });
+  /* sauvegarde automatique : envoi dès qu'on quitte l'appli, et à chaque retour (ou toutes les 30 s quand l'appli est ouverte)
+     on récupère la dernière sauvegarde du compte */
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
-    else if (user && Date.now() - state.last > 20000) fullSync();
+    else if (user) fullSync();
   });
+  window.addEventListener('online', () => { if (user) fullSync(); });
+  setInterval(() => {
+    if (!user || document.visibilityState !== 'visible' || syncing || pushT) return;
+    if (busy()) return;
+    fullSync();
+  }, 30000);
+  /* une mise à jour attendait la fin d'un exercice : on l'applique au retour sur un écran calme */
+  if (window.UI && UI.go) {
+    const go0 = UI.go;
+    UI.go = function () { const r = go0.apply(this, arguments); if (pending && user && !busy()) setTimeout(() => { if (!busy()) fullSync(); }, 300); return r; };
+  }
   const prevPause = window.AS_pause;
   window.AS_pause = () => { flush(); if (prevPause) prevPause(); };
 

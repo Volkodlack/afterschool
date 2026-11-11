@@ -15,11 +15,15 @@
     const answers = [];
     let i = 0, txt = '', done = false;
     root.classList.add('typing', 'full');
+    /* même structure que les autres jeux d'écriture (« game game-area » en colonne) : chaque bloc garde sa place,
+       le bouton Réécouter ne déborde plus sur la case de réponse et le clavier reste centré en bas */
     const wrap = el(html`<div class="game center-col dct">
-      <div class="game-area">
-        <div class="dct-top"><span class="dct-n"></span><span class="muted">Écoute bien, écris le mot, puis appuie sur OK</span></div>
-        <div class="row center"><button class="pix-btn gold dct-say">🔊 Réécouter</button></div>
-        <div class="dct-answer"><span class="dct-txt"></span><span class="dct-caret"></span></div>
+      <div class="game game-area">
+        <div class="dct-top"><span class="dct-n"></span><span class="dct-help">Écoute bien, écris le mot, puis appuie sur OK</span></div>
+        <div class="dct-line">
+          <button class="pix-btn gold dct-say" aria-label="Réécouter le mot">🔊 Réécouter</button>
+          <div class="dct-answer"><span class="dct-txt"></span><span class="dct-caret"></span></div>
+        </div>
       </div></div>`);
     root.appendChild(wrap);
     const area = wrap.querySelector('.game-area');

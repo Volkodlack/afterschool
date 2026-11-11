@@ -47,6 +47,18 @@
   data.stats = Object.assign(defaults().stats, data.stats || {});
   data.settings = Object.assign(defaults().settings, data.settings || {});
   data.world = Object.assign(defaults().world, data.world || {});
+  /* listes déjà enregistrées avec une majuscule à chaque mot (« Aimer », « À ») : on remet les minuscules une fois pour toutes */
+  (function fixCaps() {
+    let changed = false;
+    const capFirst = x => /^\p{Lu}/u.test(x);
+    (data.lists || []).forEach(l => {
+      const ws = l.words || [];
+      if (ws.length < 3 || ws.filter(capFirst).length < ws.length * 0.8) return;
+      l.words = ws.map(w => capFirst(w) && !/^\p{Lu}{2}/u.test(w) ? w[0].toLowerCase() + w.slice(1) : w);
+      changed = true;
+    });
+    if (changed) { data._ts = Date.now(); write(PKEY(global.current), data); }
+  })();
 
   function syncSummary() {
     const p = global.profiles.find(x => x.id === global.current);

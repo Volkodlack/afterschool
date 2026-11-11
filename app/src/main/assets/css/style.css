@@ -1696,5 +1696,34 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .q-reveal h2 { font-size: clamp(20px, 4vh, 40px); }
 .q-reveal .q-sub, .q-reveal .q-hint, .q-gift { margin: .3em 0; font-size: clamp(13px, 2vh, 18px); }
 .q-modal { max-height: 98vh; overflow: hidden; }
-.dct-answer { margin-bottom: clamp(6px, 1.2vh, 14px); flex: 0 0 auto; }
-.dct .game-area { align-items: center; } .dct .dct-answer { align-self: center; }
+
+/* un mot coloré en syllabes reste d'un seul tenant, même dans une étiquette « flex » */
+.sylw { white-space: nowrap; }
+.chip .sylw, .dct-w .sylw { display: inline; }
+
+/* dictée : consigne, puis [Réécouter] + case de réponse sur la même ligne, clavier en bas */
+.dct .game-area { align-items: center; gap: clamp(8px, 1.6vh, 18px); }
+.dct .dct-top { flex: 0 0 auto; }
+.dct .dct-help { font-size: clamp(15px, 2.4vh, 22px); font-weight: 600; background: rgba(255,255,255,.75); padding: .15em .7em; border-radius: 6px; }
+.dct-line { flex: 0 0 auto; display: flex; align-items: stretch; justify-content: center; gap: clamp(8px, 1.4vw, 16px); width: min(100%, 1000px); }
+.dct-line .dct-say { flex: 0 0 auto; font-size: clamp(16px, 2.6vh, 26px); white-space: nowrap; }
+.dct-line .dct-answer { flex: 1 1 auto; width: auto; min-width: 0; max-width: 760px; margin: 0; }
+#screen.typing .dct .kbd { margin-top: auto; }
+/* téléphone en portrait : le bouton au-dessus de la case, sur toute la largeur */
+@media (max-width: 560px) {
+  .dct-line { flex-direction: column; align-items: stretch; }
+  .dct-line .dct-say { align-self: center; }
+}
+/* téléphone couché (2 colonnes) : consigne + bouton + case à gauche, clavier à droite */
+@media (max-height: 520px) and (orientation: landscape) {
+  .dct-line { flex-direction: column; align-items: stretch; width: 100%; }
+  .dct-line .dct-say { align-self: center; font-size: 14px; }
+  .dct .dct-help { font-size: 13px; }
+  .dct .dct-n { font-size: 18px; }
+  .dct-line .dct-answer { font-size: clamp(22px, 8vh, 36px); }
+}
+/* résultat de la dictée : tout centré (bulle, note, étoiles, correction) */
+.dct-res { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; }
+.dct-res .dct-hero, .dct-res .dct-note { align-self: center; }
+.dct-res .dct-hero .bubble { text-align: left; }
+@media (max-width: 560px) { .dct-res .dct-hero { flex-direction: column; gap: 6px; } .dct-res .dct-hero .bubble { text-align: center; } }

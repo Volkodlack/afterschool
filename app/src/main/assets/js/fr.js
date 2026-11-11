@@ -17,6 +17,8 @@
       let v = isV(w[i]);
       // "qu" / "gu" + vowel: the u belongs to the consonant
       if ((w[i] === 'u' || w[i] === 'U') && i > 0 && /[qg]/i.test(w[i - 1]) && i + 1 < w.length && isV(w[i + 1])) v = false;
+      // « y » entre deux voyelles se coupe comme une consonne : vo-ya-ge, cra-yon, net-to-ya-ge
+      if (/y/i.test(w[i]) && i > 0 && isV(w[i - 1]) && i + 1 < w.length && isV(w[i + 1])) v = false;
       const last = groups[groups.length - 1];
       if (last && last.v === v) last.s += w[i]; else groups.push({ v, s: w[i] });
     }
@@ -57,9 +59,11 @@
     return out;
   }
 
+  /* le mot entier est enveloppé dans un seul <span> : dans une étiquette « flex », les syllabes ne se séparent jamais
+     (avant, « s'occuper » s'affichait « S ' oc cu per ») */
   function colorize(text, startAlt = 0) {
     let k = startAlt;
-    return syllables(text).map(p => p.w ? `<span class="${(k++ % 2) ? 'syl-b' : 'syl-a'}">${esc(p.s)}</span>` : (/\s/.test(p.s) ? (k = 0, esc(p.s)) : esc(p.s))).join('');
+    return '<span class="sylw">' + syllables(text).map(p => p.w ? `<span class="${(k++ % 2) ? 'syl-b' : 'syl-a'}">${esc(p.s)}</span>` : (/\s/.test(p.s) ? (k = 0, esc(p.s)) : esc(p.s))).join('') + '</span>';
   }
 
   /* --- misspelling rules --- */
@@ -204,7 +208,17 @@
   function parseWords(text) {
     const seen = new Set();
     return String(text).split(/[\n,;]+/).map(s => s.replace(/^\s*(\d+[.)]|[-•*])\s*/, '').trim().replace(/[’`]/g, "'").replace(/\s+/g, ' '))
-      .filter(s => s && /\p{L}/u.test(s)).filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+      .filter(s => s && /\p{L}/u.test(s)).filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .map((w, i, all) => tidyCase(w, all));
+  }
+  /* une liste recopiée (ou lue sur une photo) où chaque mot commence par une majuscule : « Aimer, À, Elles vont »
+     → on remet la minuscule, sinon l'enfant apprend « Aimer » et la dictée affiche « À ». Les sigles restent tels quels. */
+  function tidyCase(w, all) {
+    const capFirst = x => /^\p{Lu}/u.test(x);
+    const caps = all.filter(capFirst).length;
+    if (all.length < 3 || caps < all.length * 0.8) return w;
+    if (!capFirst(w) || /^\p{Lu}{2}/u.test(w)) return w;
+    return w[0].toLowerCase() + w.slice(1);
   }
 
   function guessType(text) {
@@ -312,5 +326,5 @@
   }
   window.SoundColors = { groups: SOUND_GROUPS, palette: SOUND_PALETTE, apply: applySoundColors };
 
-  window.FR = { soundsHTML, helpHTML, esc, norm, syllables, sylWord, colorize, misspellings, holes, pickHoles, parseWords, guessType, countWords, shuffle, isL, isV };
+  window.FR = { soundsHTML, helpHTML, esc, norm, syllables, sylWord, colorize, misspellings, holes, pickHoles, parseWords, tidyCase, guessType, countWords, shuffle, isL, isV };
 })();
