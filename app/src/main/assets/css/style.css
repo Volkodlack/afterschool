@@ -1659,3 +1659,28 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 @media (max-width: 760px) { .lst-tabs { gap: 4px; } .lst-tabs .pix-btn { font-size: 13px; padding: .45em .25em; } }
 .cards-page .booster-bar { flex-wrap: wrap; } .cards-page .bb-info { flex: 1 1 150px; }
 @media (max-width: 760px) { .cards-page .booster-bar > .pix-btn { flex: 1 1 0; } }
+
+/* Mes mots : chaque mot rangé dans la case de son étape */
+.lst-pane[data-p=mots] { justify-content: flex-start; }
+.lst-path { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.2vh, 12px); }
+.lp-step { display: flex; flex-direction: column; min-height: 0; border: 3px solid var(--ink); padding: clamp(6px, 1vh, 10px); gap: 6px; overflow: hidden; }
+.lp-step.st0 { background: #eaf7df; } .lp-step.st1 { background: #e3edff; } .lp-step.st2 { background: #fff2d6; } .lp-step.st3 { background: #fff7b8; }
+.theme-poney .lp-step { border: 3px solid #ffc2dc; border-radius: 18px; }
+.lp-h { display: flex; align-items: center; gap: 6px; font-size: clamp(13px, 2.1vh, 20px); }
+.lp-h b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-n { background: var(--ink); color: #fff; font-weight: 700; padding: 0 .5em; border-radius: 4px; }
+.theme-poney .lp-n { background: #c07aa0; border-radius: 999px; }
+.lp-words { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.lp-words .chip { font-size: clamp(16px, 2.8vh, 28px); padding: .1em .45em; cursor: pointer; }
+.lp-empty { opacity: .35; font-weight: 700; }
+@media (orientation: portrait) { .lst-path { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); } }
+.lp-words { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.lp-words .chip { max-width: 100%; white-space: nowrap; }
+/* téléphone : les étapes l'une sous l'autre, chacune aussi large que l'écran et d'autant plus haute qu'elle a de mots */
+@media (max-width: 760px) {
+  .lst-path { display: flex !important; flex-direction: column; }
+  .lp-step { flex: var(--k) 1 0; min-height: 52px; flex-direction: row; align-items: flex-start; gap: 8px; }
+  .lp-h { flex: 0 0 auto; flex-direction: column; align-items: center; width: 4.2em; text-align: center; font-size: 12px; gap: 2px; }
+  .lp-h b { white-space: normal; font-size: 11px; line-height: 1.1; }
+  .lp-words { align-self: stretch; }
+}

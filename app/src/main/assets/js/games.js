@@ -748,8 +748,11 @@
         </div>
         <div class="lst-body">
           <div class="lst-pane" data-p="mots">
-            <div class="chips">${l.words.map((w, i) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${i * 0.04}s"><span>${FR.colorize(w)}</span>${masteryStars(w)}</span>`).join('')}</div>
-            <div class="lst-steps">${Store.STAGES.map((S, i) => `<span class="lst-step st${i}">${S.icon} ${S.name} <b>${l.words.filter(w => Store.mastery(w) === i).length}</b></span>`).join('')}</div>
+            <div class="lst-path">${Store.STAGES.map((S, i) => {
+              const ws = l.words.filter(w => Store.mastery(w) === i);
+              return `<div class="lp-step st${i}" style="--k:${ws.length + 1}"><div class="lp-h"><span>${S.icon}</span><b>${S.name}</b><span class="lp-n">${ws.length}</span></div>
+                <div class="lp-words">${ws.map((w, k) => `<span class="chip" data-w="${esc(w)}" style="animation-delay:${k * 0.04}s">${FR.colorize(w)}</span>`).join('') || '<span class="lp-empty">—</span>'}</div></div>`;
+            }).join('')}</div>
             <div class="lst-mastery"><div class="progress"><div style="width:${pct}%"></div></div><span>Maîtrise ${pct} %</span></div>
             <p class="muted lst-hint">Touche un mot pour l'entendre</p>
           </div>
@@ -766,8 +769,21 @@
       UI._listTab = t;
       page.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       page.querySelectorAll('.lst-pane').forEach(p => p.classList.toggle('on', p.dataset.p === t));
-      if (UI.fitBox && t === 'mots') UI.fitBox(page.querySelector('.lst-pane.on'));
+      if (t === 'mots') { requestAnimationFrame(fitSteps); setTimeout(fitSteps, 400); setTimeout(fitSteps, 1200); }
     };
+    /* chaque case d'étape réduit ses mots s'ils ne tiennent pas (beaucoup de mots, ou des mots longs) */
+    function fitSteps() {
+      page.querySelectorAll('.lp-step').forEach(st => {
+        const box = st.querySelector('.lp-words');
+        const chips = [...box.children];
+        chips.forEach(c => c.style.zoom = '');
+        let z = 1, n = 0;
+        const over = () => box.scrollHeight > box.clientHeight + 1 || chips.some(c => c.getBoundingClientRect().width > box.clientWidth + 1);
+        while (over() && z > .3 && n++ < 40) { z *= .9; chips.forEach(c => c.style.zoom = z); }
+      });
+    }
+    const roSteps = window.ResizeObserver ? new ResizeObserver(() => requestAnimationFrame(fitSteps)) : null;
+    if (roSteps) roSteps.observe(page.querySelector('.lst-path'));
     page.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SFX.play('pop'); showTab(b.dataset.t); });
     if (window.Quests) { root.querySelector('[data-z=quest]').replaceWith(Quests.panel(l)); setTimeout(() => Quests.flush(), 450); }
     else page.querySelector('[data-t=quete]').remove();
@@ -784,7 +800,7 @@
       else if (g === 'memory' || g === 'motsmeles') UI.go(g, { title: GAMES[g].name, words: l.words });
       else UI.go('session', { title: GAMES[g].name, game: g, words: l.words });
     });
-    return () => root.classList.remove('full', 'fit');
+    return () => { root.classList.remove('full', 'fit'); if (roSteps) roSteps.disconnect(); };
   });
 
   function emptyLists(root) {
