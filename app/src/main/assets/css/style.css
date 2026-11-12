@@ -1765,3 +1765,8 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
   #screen.typing .kbd .key.acc { flex: 0 0 calc((100% - 24px) / 7); }
   #screen.typing .kbd .key.wide, #screen.typing .kbd .key.ok { flex: 3 1 0; }
 }
+/* lecture corrigée : la ligne suivante n'apparaît qu'une fois la ligne en cours lue en entier */
+.reader .line.rc-hidden { display: none !important; }
+.reader .line.rc-appear { animation: rcAppear .45s ease-out both; }
+@keyframes rcAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rc-skip { animation: micPulse 1.4s ease-in-out infinite; }

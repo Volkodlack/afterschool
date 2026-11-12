@@ -22,7 +22,8 @@
     const units = Fluence.buildUnits(sheet);
     const grid = units.length && units[0].grid;
     const texts = units.map(u => u.text);
-    let mode = 'idle', sess = null, t0 = 0, tick = 0, endT = 0, last = Ear.match(texts, '');
+    /* l'IA suit la lecture ligne par ligne : la ligne suivante n'apparaît que quand tous les mots de la ligne ont été lus dans l'ordre */
+    let mode = 'idle', sess = null, t0 = 0, tick = 0, endT = 0, stuckT = 0, track = Ear.tracker(texts), last = track.state(), shown = -1;
 
     const wrap = el(html`<div class="reader-wrap center-col">
       <div class="prompt rc-prompt">🤖 Lis la fiche à voix haute, sans te presser. Je t'écoute et je corrige !</div>
@@ -31,11 +32,13 @@
       <div class="chrono-bar">
         <div class="chrono">0.0 s</div>
         <button class="pix-btn green big" data-a="go">${Pixel.svg('play')} C'est parti !</button>
+        <button class="pix-btn small gold rc-skip" data-a="skip" style="display:none">Ligne suivante ⏭</button>
         <button class="pix-btn small wood" data-a="hist">${Pixel.svg('trophy')} Mes lectures</button>
       </div></div>`);
     root.appendChild(wrap);
     const reader = wrap.querySelector('.reader'), chrono = wrap.querySelector('.chrono'), go = wrap.querySelector('[data-a=go]');
     const status = wrap.querySelector('.rc-status'), stEl = status.querySelector('.st');
+    const skipBtn = wrap.querySelector('[data-a=skip]'), histBtn = wrap.querySelector('[data-a=hist]');
 
     function base() {
       const vmin = Math.min(innerWidth, innerHeight) / 100;
@@ -64,23 +67,33 @@
       paint(last, false);
     }
     const span = (ui, wi) => reader.querySelector(`.w[data-u="${ui}"][data-wi="${wi}"]`);
+    /* pendant la lecture, seules les lignes déjà lues et la ligne en cours sont affichées */
+    function showLines(upTo) {
+      const hide = !grid && (mode === 'reading' || mode === 'countdown');
+      reader.querySelectorAll('.line').forEach(l => {
+        const u = +l.dataset.u;
+        const h = hide && u > upTo;
+        l.classList.toggle('rc-hidden', h);
+        if (!h && hide && u === upTo && shown < upTo) { l.classList.remove('rc-appear'); void l.offsetWidth; l.classList.add('rc-appear'); }
+      });
+      if (hide) shown = Math.max(shown, upTo);
+    }
     /* colore les mots lus et place le curseur sur le mot suivant */
     function paint(res, final) {
       reader.querySelectorAll('.rc-next').forEach(n => n.classList.remove('rc-next'));
-      let lastOk = null;
+      const cur = res.cur == null ? res.lines.length : res.cur;
       res.lines.forEach((l, ui) => l.words.forEach((x, wi) => {
         const s = span(ui, wi); if (!s) return;
         s.classList.toggle('rc-ok', x.ok);
-        s.classList.toggle('rc-miss', !!final && !x.ok);
-        if (x.ok) lastOk = [ui, wi];
+        // une ligne passée avec « Ligne suivante » montre tout de suite ses mots manqués
+        s.classList.toggle('rc-miss', !x.ok && (!!final || (mode === 'reading' && ui < cur)));
+        if (grid) { const it = s.closest('.item') || s; it.classList.toggle('rc-ok', x.ok); it.classList.toggle('rc-miss', !x.ok && (!!final || ui < cur)); }
       }));
-      if (final || mode !== 'reading') return;
-      // prochain mot à lire
-      let found = !lastOk, nx = null;
-      outer: for (let ui = 0; ui < res.lines.length; ui++) for (let wi = 0; wi < res.lines[ui].words.length; wi++) {
-        if (found && !res.lines[ui].words[wi].ok) { nx = [ui, wi]; break outer; }
-        if (lastOk && ui === lastOk[0] && wi === lastOk[1]) found = true;
-      }
+      if (final || mode !== 'reading') { showLines(res.lines.length); return; }
+      showLines(cur);
+      // prochain mot à lire : le premier mot pas encore lu de la ligne en cours
+      let nx = null;
+      if (cur < res.lines.length) { const wi = res.lines[cur].words.findIndex(x => !x.ok); if (wi >= 0) nx = [cur, wi]; }
       if (nx) {
         const s = span(nx[0], nx[1]);
         if (s) {
@@ -93,7 +106,7 @@
 
     async function start() {
       mode = 'countdown'; go.disabled = true;
-      last = Ear.match(texts, ''); paint(last, false); reader.scrollTop = 0;
+      track = Ear.tracker(texts); shown = -1; last = track.state(); paint(last, false); reader.scrollTop = 0;
       for (const n of ['3', '2', '1']) {
         const cd = el(`<div class="countdown"><span>${n}</span></div>`);
         document.body.appendChild(cd); SFX.play('beep');
@@ -108,10 +121,11 @@
         onState(x) { if (x === 'listening' && mode === 'reading') { stEl.textContent = 'Je t\'écoute… Le mot à lire est surligné.'; status.classList.add('listening'); } },
         onText(t) {
           if (mode !== 'reading') return;
-          last = Ear.match(texts, t); paint(last, false);
-          const L = last.lines[last.lines.length - 1];
-          const endDone = L.words.length ? L.words.slice(-2).some(x => x.ok) && last.score > 0.5 : false;
-          clearTimeout(endT); if (endDone) endT = setTimeout(finish, 1600);
+          const before = JSON.stringify(last.lines[last.cur] ? last.lines[last.cur].words.map(x => x.ok) : []) + last.cur;
+          last = track.update(t); paint(last, false);
+          const after = JSON.stringify(last.lines[last.cur] ? last.lines[last.cur].words.map(x => x.ok) : []) + last.cur;
+          if (after !== before) armStuck();
+          clearTimeout(endT); if (last.done) endT = setTimeout(finish, 1000);
         },
         onError(m) { stEl.textContent = m === 'mic' ? 'Le micro n\'est pas autorisé 😕' : 'Oups, je n\'arrive pas à écouter.'; status.classList.remove('listening'); }
       });
@@ -119,17 +133,37 @@
       chrono.classList.add('running');
       tick = setInterval(() => { chrono.textContent = fmt(performance.now() - t0); }, 100);
       go.disabled = false; go.className = 'pix-btn red big'; go.innerHTML = Pixel.svg('stop') + " J'ai fini !";
+      histBtn.style.display = 'none';
+      armStuck();
     }
+    /* bloqué sur un mot depuis un moment : on le dit, et on propose de passer à la ligne suivante */
+    function armStuck() {
+      clearTimeout(stuckT); skipBtn.style.display = 'none';
+      if (mode !== 'reading') return;
+      stEl.textContent = 'Je t\'écoute… Le mot à lire est surligné.';
+      stuckT = setTimeout(() => {
+        if (mode !== 'reading' || last.done) return;
+        stEl.textContent = 'Relis bien le mot surligné en jaune 🙂';
+        skipBtn.style.display = '';
+      }, 6000);
+    }
+    skipBtn.onclick = () => {
+      if (mode !== 'reading') return;
+      SFX.play('pop');
+      last = track.skip(); paint(last, false); armStuck();
+      clearTimeout(endT); if (last.done) endT = setTimeout(finish, 600);
+    };
 
     async function finish() {
       if (mode !== 'reading') return;
-      mode = 'checking'; clearTimeout(endT);
+      mode = 'checking'; clearTimeout(endT); clearTimeout(stuckT); skipBtn.style.display = 'none'; histBtn.style.display = '';
       const ms = performance.now() - t0;
       clearInterval(tick); chrono.classList.remove('running');
       go.disabled = true; stEl.textContent = 'Je corrige…'; status.classList.remove('listening');
       const r = sess ? await sess.stop() : { text: '' }; sess = null;
       if (mode !== 'checking') return;
-      const res = Ear.match(texts, r.text);
+      // les lignes pas encore atteintes comptent comme non lues
+      const res = r.text ? track.update(r.text) : track.state();
       last = res; paint(res, true);
       const total = res.lines.reduce((a, l) => a + l.words.length, 0);
       const correct = res.lines.reduce((a, l) => a + l.words.filter(x => x.ok).length, 0);
@@ -178,7 +212,7 @@
       mode = 'idle';
       go.disabled = false; go.className = 'pix-btn green big'; go.innerHTML = Pixel.svg('play') + ' Je recommence';
       stEl.textContent = keepMarks ? 'En vert : bien lu. En rouge : à retravailler (touche un mot pour l\'entendre).' : 'Appuie sur « Je recommence » pour relire.';
-      if (!keepMarks) { last = Ear.match(texts, ''); paint(last, false); chrono.textContent = '0.0 s'; }
+      if (!keepMarks) { track = Ear.tracker(texts); last = track.state(); paint(last, false); chrono.textContent = '0.0 s'; }
     }
     reader.addEventListener('click', e => {
       if (mode === 'reading' || mode === 'countdown') return;
@@ -201,7 +235,7 @@
     const onResize = () => render();
     addEventListener('resize', onResize);
     return () => {
-      mode = 'gone'; clearInterval(tick); clearTimeout(endT); stopPlayer(); Speech.stop();
+      mode = 'gone'; clearInterval(tick); clearTimeout(endT); clearTimeout(stuckT); stopPlayer(); Speech.stop();
       if (sess) sess.cancel();
       removeEventListener('resize', onResize);
       root.classList.remove('full');

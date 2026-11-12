@@ -89,6 +89,65 @@
     return { lines: out, score: tot ? ok / tot : 0, reached };
   }
 
+  /* ---------- lecture ligne par ligne ----------
+     L'IA ne s'occupe que de la ligne en cours : elle cherche ses mots, dans l'ordre, dans ce qui a été dit depuis
+     la fin de la ligne précédente. La ligne suivante n'existe pour elle qu'une fois tous les mots de la ligne lus.
+     Un mot répété ailleurs dans le texte ne peut donc plus « voler » la place d'un autre. */
+  const wordsOf = t => (String(t).match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []);
+  function matchLine(text, H, from) {
+    const ws = wordsOf(text).map(w => ({ w, ok: false }));
+    const E = [];
+    ws.forEach((wd, wi) => toks(wd.w).forEach(tk => E.push({ tk, wi })));
+    // on ne cherche pas trop loin : un mot sauté ne doit pas être retrouvé trois lignes plus bas
+    const to = Math.min(H.length, from + E.length * 2 + 8);
+    const Hs = H.slice(from, to);
+    const n = E.length, m = Hs.length;
+    const dp = Array.from({ length: n + 1 }, () => new Int16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      dp[i][j] = near(E[i].tk, Hs[j]) ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const at = new Array(n).fill(-1);
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (near(E[i].tk, Hs[j]) && dp[i][j] === dp[i + 1][j + 1] + 1) { at[i] = from + j; i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++; else j++;
+    }
+    const best = {};
+    E.forEach((e, k) => { if (best[e.wi] == null || e.tk.length > E[best[e.wi]].tk.length) best[e.wi] = k; });
+    let end = from;
+    Object.entries(best).forEach(([wi, k]) => { if (at[k] >= 0) { ws[wi].ok = true; end = Math.max(end, at[k] + 1); } });
+    return { words: ws, done: ws.length > 0 && ws.every(x => x.ok), end };
+  }
+  /* suivi d'une lecture : update(texteEntendu) à chaque résultat, skip() pour passer une ligne bloquée */
+  function tracker(lines) {
+    const frozen = [];          // lignes terminées (ou passées) : résultat figé
+    let cur = 0, from = 0, H = [], live = null;
+    function update(heard) {
+      H = toks(heard);
+      if (from > H.length) from = H.length;
+      while (cur < lines.length) {
+        live = matchLine(lines[cur], H, from);
+        if (!live.done) break;
+        frozen[cur] = live.words; from = live.end; cur++; live = null;
+      }
+      return state();
+    }
+    function skip() {
+      if (cur >= lines.length) return state();
+      frozen[cur] = (live || matchLine(lines[cur], H, from)).words;
+      from = H.length; cur++; live = null;
+      return state();
+    }
+    function state(final) {
+      const out = lines.map((t, li) => {
+        const ws = frozen[li] || (li === cur && live ? live.words : wordsOf(t).map(w => ({ w, ok: false })));
+        return { words: ws, score: ws.length ? ws.filter(x => x.ok).length / ws.length : 1 };
+      });
+      const tot = out.reduce((a, l) => a + l.words.length, 0), ok = out.reduce((a, l) => a + l.words.filter(x => x.ok).length, 0);
+      return { lines: out, score: tot ? ok / tot : 0, cur, done: cur >= lines.length, reached: Math.min(cur, lines.length - 1) };
+    }
+    return { update, skip, state, get cur() { return cur; } };
+  }
+
   /* version web (iPad / iPhone / navigateur) : reconnaissance vocale du navigateur (Safari, Chrome) */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   function webListen({ onText, onState, onError } = {}) {
@@ -142,7 +201,7 @@
       if (N) { try { return !!(N.asrAvailable && N.asrAvailable()); } catch (e) { return false; } }
       return !!SR;
     },
-    listen, match, toks,
+    listen, match, toks, tracker, matchLine,
     /* hideFn(li, wi, w, nw) -> null (mot visible) ou texte du trou. Sans hideFn : tout est caché. */
     revealHTML(res, { showAll = false, hideFn = null } = {}) {
       const E = FR.esc;
