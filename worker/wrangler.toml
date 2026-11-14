@@ -1,0 +1,13 @@
+name = "afterschool-ia"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+# 20 corrections par minute et par appareil au maximum : protège le quota gratuit (partagé avec les illustrations)
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
