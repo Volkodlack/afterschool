@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: ia-worker
@@ -49,4 +50,5 @@ jobs:
             git config user.name "Maxime Samain"; git config user.email "max.samain@gmail.com"
             git add $F && git commit -q -m "IA de correction : adresse du service" && git pull -q --rebase && git push -q
             gh workflow run web.yml --ref main
+            gh workflow run build-apk.yml --ref main
           fi
