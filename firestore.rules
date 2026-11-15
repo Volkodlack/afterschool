@@ -1,8 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // chaque compte famille ne voit et ne modifie que ses propres données
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // tableau de bord de Maxime (admin.html) : lui seul peut lire le temps passé de tous les comptes
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'max.samain@gmail.com' && request.auth.token.email_verified == true;
+    }
+    match /{path=**}/usage/{day} {
+      allow read: if isAdmin();
     }
   }
 }

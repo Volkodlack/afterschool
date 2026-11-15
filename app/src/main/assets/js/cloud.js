@@ -329,6 +329,12 @@
     async signOut() { flush(); await FB.signOut(auth); },
     sync: fullSync,
     msg,
+    /* temps passé sur l'appli (voir usage.js) : un document par jour, l'adresse du compte sert à le reconnaître */
+    async putUsage(day, d) {
+      if (!user) return false;
+      await FB.setDoc(uref('usage', day), Object.assign({ email: user.email || '', uid: user.uid }, d), { merge: true });
+      return true;
+    },
 
     /* fenêtre de connexion (Google ou e-mail) */
     async loginModal() {

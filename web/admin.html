@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>After School — Suivi</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #f4f1ea; --card: #ffffff; --ink: #2b1d12; --muted: #7a6a5c; --line: #e6dfd3;
+    --accent: #3f8f3a; --accent-2: #2f6fd1; --bar: #5aa84f; --bar-2: #8fc7f5; --warn: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #1b1714; --card: #26211d; --ink: #f2ebe2; --muted: #a8998a; --line: #3a332d; --accent: #6cc463; --accent-2: #79a8f0; --bar: #6cc463; --bar-2: #4b7fb8; --warn: #ef6b5b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 2; }
+  header img { width: 34px; height: 34px; border-radius: 8px; }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header .who { color: var(--muted); font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 7px 12px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 10px 18px; }
+  button.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .center { text-align: center; padding: 60px 16px; }
+  .muted { color: var(--muted); }
+  .bar-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 26px; line-height: 1.1; }
+  .kpi span { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 10px; }
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 170px; padding-top: 10px; overflow-x: auto; }
+  .col { flex: 1 0 22px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 22px; }
+  .col .stack { width: 70%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; min-height: 1px; }
+  .col .stack i { display: block; }
+  .col small { font-size: 10px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
+  .col .v { font-size: 10px; color: var(--muted); margin-bottom: 2px; white-space: nowrap; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.day td { background: var(--bg); font-weight: 700; }
+  .kids { white-space: normal; }
+  .tag { display: inline-block; white-space: nowrap; font-size: 12px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); margin: 1px 4px 1px 0; color: var(--muted); }
+  .err { color: var(--warn); }
+  header h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .col small { text-align: center; line-height: 1.15; }
+  @media (max-width: 600px) { header .who { display: none; } header h1 { font-size: 15px; } header button { padding: 6px 9px; font-size: 13px; } .col .v { font-size: 9px; } .kpi b { font-size: 22px; } th, td { padding: 7px 6px; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon-192.png" alt="">
+  <h1>After School · Suivi</h1>
+  <span class="who" id="who"></span>
+  <button id="out" hidden>Se déconnecter</button>
+</header>
+<main id="main"><p class="center muted">Chargement…</p></main>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, collectionGroup, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const ADMIN = 'max.samain@gmail.com';
+  const app = initializeApp({ apiKey: 'AIzaSyDMOR43TsQ-1JuuB75jo_gpg5TgHVgWz9I', authDomain: 'afterschool-9244f.firebaseapp.com', projectId: 'afterschool-9244f', appId: '1:165205724449:web:cf52ffd7565eab77950260' });
+  const auth = getAuth(app), db = getFirestore(app);
+  const $ = s => document.querySelector(s), main = $('#main');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dur = s => { s = Math.round(s || 0); if (s < 60) return s ? s + ' s' : '—'; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const dayLabel = k => new Date(k + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const COLORS = ['#5aa84f', '#2f6fd1', '#e0a020', '#c2569a', '#3fb3a8', '#8a6fd1', '#d9653b', '#7a8f2a'];
+  let rows = [], days = 7;
+
+  $('#out').onclick = () => signOut(auth);
+  function login(msg) {
+    $('#out').hidden = true; $('#who').textContent = '';
+    main.innerHTML = `<div class="center"><p>${msg || 'Espace réservé. Connecte-toi avec ton compte Google.'}</p><button class="primary" id="in">Se connecter avec Google</button></div>`;
+    $('#in').onclick = async () => { try { const p = new GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' }); await signInWithPopup(auth, p); } catch (e) { login(`<span class="err">Connexion impossible : ${esc(e.code || e.message)}</span>`); } };
+  }
+  onAuthStateChanged(auth, async u => {
+    if (!u) return login();
+    $('#who').textContent = u.email; $('#out').hidden = false;
+    if (u.email !== ADMIN) { main.innerHTML = `<p class="center">Accès réservé.<br><span class="muted">Ce compte (${esc(u.email)}) n'a pas accès au suivi.</span></p>`; return; }
+    main.innerHTML = '<p class="center muted">Chargement des données…</p>';
+    try {
+      const snap = await getDocs(collectionGroup(db, 'usage'));
+      rows = [];
+      snap.forEach(d => {
+        const x = d.data(), day = x.day || d.id, email = x.email || ('compte ' + (x.uid || d.ref.parent.parent.id).slice(0, 6));
+        Object.values(x.devices || {}).forEach(dv => rows.push({ day, email, platform: dv.platform || '?', sec: dv.sec || 0, opens: dv.opens || 0, first: dv.first, last: dv.last, profiles: dv.profiles || {} }));
+      });
+      render();
+    } catch (e) {
+      main.innerHTML = `<p class="center err">Lecture refusée (${esc(e.code || e.message)}).<br><span class="muted">Les règles Firestore du fichier firestore.rules doivent être publiées dans la console Firebase.</span></p>`;
+    }
+  });
+
+  function render() {
+    const from = new Date(); from.setDate(from.getDate() - (days - 1));
+    const keys = []; for (let d = new Date(from); d <= new Date(); d.setDate(d.getDate() + 1)) keys.push(dayKey(d));
+    const R = rows.filter(r => r.day >= keys[0]);
+    const accounts = [...new Set(R.map(r => r.email))].sort();
+    const color = e => COLORS[accounts.indexOf(e) % COLORS.length];
+    const total = R.reduce((a, r) => a + r.sec, 0), opens = R.reduce((a, r) => a + r.opens, 0);
+    const activeDays = new Set(R.filter(r => r.sec > 0).map(r => r.day)).size;
+    // par jour et par compte
+    const byDay = {}; keys.forEach(k => byDay[k] = {});
+    R.forEach(r => {
+      const a = (byDay[r.day] ||= {})[r.email] ||= { sec: 0, opens: 0, kids: {}, plats: new Set(), first: null, last: null };
+      a.sec += r.sec; a.opens += r.opens; a.plats.add(r.platform);
+      if (r.first && (!a.first || r.first < a.first)) a.first = r.first;
+      if (r.last && (!a.last || r.last > a.last)) a.last = r.last;
+      Object.values(r.profiles).forEach(p => { const k = a.kids[p.name || '?'] ||= { sec: 0, opens: 0 }; k.sec += p.sec || 0; k.opens += p.opens || 0; });
+    });
+    const max = Math.max(60, ...keys.map(k => Object.values(byDay[k]).reduce((a, x) => a + x.sec, 0)));
+    const byAcc = {};
+    R.forEach(r => { const a = byAcc[r.email] ||= { sec: 0, opens: 0, days: new Set(), kids: {} }; a.sec += r.sec; a.opens += r.opens; if (r.sec > 0) a.days.add(r.day); Object.values(r.profiles).forEach(p => { a.kids[p.name || '?'] = (a.kids[p.name || '?'] || 0) + (p.sec || 0); }); });
+
+    main.innerHTML = `
+      <div class="bar-row">
+        ${[7, 14, 30].map(n => `<button data-d="${n}" class="${n === days ? 'on' : ''}">${n} jours</button>`).join('')}
+        <span style="flex:1"></span><button id="reload">Actualiser</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><b>${dur(total)}</b><span>temps actif sur ${days} jours</span></div>
+        <div class="kpi"><b>${dur(activeDays ? total / activeDays : 0)}</b><span>par jour d'utilisation</span></div>
+        <div class="kpi"><b>${opens}</b><span>connexions</span></div>
+        <div class="kpi"><b>${accounts.length}</b><span>compte${accounts.length > 1 ? 's' : ''} actif${accounts.length > 1 ? 's' : ''}</span></div>
+      </div>
+      <div class="card"><h2>Temps actif par jour</h2>
+        <div class="chart">${keys.map(k => { const acc = byDay[k]; const t = Object.values(acc).reduce((a, x) => a + x.sec, 0);
+          return `<div class="col" title="${esc(dayLabel(k))} : ${dur(t)}"><span class="v">${t ? dur(t) : ''}</span><div class="stack" style="height:${t / max * 100}%">${accounts.map(e => acc[e] ? `<i style="flex:${acc[e].sec};background:${color(e)}"></i>` : '').join('')}</div><small>${esc(new Date(k + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''))}<br>${+k.slice(8)}</small></div>`; }).join('')}</div>
+        <div class="legend">${accounts.map(e => `<span><i style="background:${color(e)}"></i>${esc(e)}</span>`).join('') || '<span class="muted">Aucune donnée sur la période.</span>'}</div>
+      </div>
+      <div class="card"><h2>Par compte</h2><div class="table-wrap"><table>
+        <tr><th>Compte</th><th>Enfants</th><th class="num">Temps</th><th class="num">Jours</th><th class="num">Connexions</th></tr>
+        ${accounts.map(e => { const a = byAcc[e]; return `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${color(e)};margin-right:6px"></i>${esc(e)}</td>
+          <td class="kids">${Object.entries(a.kids).sort((x, y) => y[1] - x[1]).map(([n, s]) => `<span class="tag">${esc(n)} · ${dur(s)}</span>`).join('')}</td>
+          <td class="num">${dur(a.sec)}</td><td class="num">${a.days.size}</td><td class="num">${a.opens}</td></tr>`; }).join('') || '<tr><td colspan="5" class="muted">Aucune donnée.</td></tr>'}
+      </table></div></div>
+      <div class="card"><h2>Détail par jour</h2><div class="table-wrap"><table>
+        <tr><th>Compte</th><th>Enfants</th><th class="num">Temps</th><th class="num">Connexions</th><th>Horaires</th><th>Appareils</th></tr>
+        ${keys.slice().reverse().map(k => { const acc = byDay[k]; const es = Object.keys(acc).sort(); if (!es.length) return `<tr class="day"><td colspan="6">${esc(dayLabel(k))} <span class="muted" style="font-weight:400">— pas de connexion</span></td></tr>`;
+          return `<tr class="day"><td colspan="6">${esc(dayLabel(k))}</td></tr>` + es.map(e => { const a = acc[e]; return `<tr><td>${esc(e)}</td>
+            <td class="kids">${Object.entries(a.kids).map(([n, x]) => `<span class="tag">${esc(n)} · ${dur(x.sec)}</span>`).join('')}</td>
+            <td class="num">${dur(a.sec)}</td><td class="num">${a.opens}</td><td>${a.first ? esc(a.first) + ' – ' + esc(a.last) : '—'}</td>
+            <td>${[...a.plats].map(p => `<span class="tag">${esc(p)}</span>`).join('')}</td></tr>`; }).join(''); }).join('')}
+      </table></div></div>
+      <p class="muted" style="font-size:13px">Temps actif : l'appli est à l'écran et l'enfant a touché l'écran dans les 2 dernières minutes. Connexion : ouverture de l'appli, ou retour après plus de 5 minutes. Seuls les appareils connectés à un compte famille sont comptés.</p>`;
+    main.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { days = +b.dataset.d; render(); });
+    $('#reload').onclick = () => location.reload();
+  }
+</script>
+</body>
+</html>

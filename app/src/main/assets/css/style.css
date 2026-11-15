@@ -1770,3 +1770,10 @@ h2.pix-title { margin-top: .6em; margin-bottom: .5em; }
 .reader .line.rc-appear { animation: rcAppear .45s ease-out both; }
 @keyframes rcAppear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .rc-skip { animation: micPulse 1.4s ease-in-out infinite; }
+/* clavier ouvert : chaque écran défile jusqu'en bas (de la place en plus sous le dernier bouton) */
+body.kb-open #screen { overflow-y: auto !important; padding-bottom: calc(var(--kb-h, 0px) + 40vh) !important; -webkit-overflow-scrolling: touch; }
+body.kb-open #screen > * { zoom: 1 !important; }
+body.kb-open #screen.typing, body.kb-open #screen.full { display: block; }
+body.kb-open #screen.typing > .game { height: auto; }
+body.kb-open .modal-back { align-items: flex-start; overflow-y: auto; padding-bottom: calc(var(--kb-h, 0px) + 30vh); }
+body.kb-open .modal { max-height: none; }

@@ -373,7 +373,8 @@
     const box = scr && scr.firstElementChild;
     if (!box) return;
     const z0 = parseFloat(box.style.zoom) || 1;
-    if (NOFIT.has(scr.dataset.screen)) { if (z0 !== 1) box.style.zoom = ''; return; }
+    // clavier ouvert : on ne réduit rien, l'écran défile jusqu'en bas
+    if (NOFIT.has(scr.dataset.screen) || document.body.classList.contains('kb-open')) { if (z0 !== 1) box.style.zoom = ''; return; }
     // ce qui dépasse (marges et ombres comprises) est mesuré par le défilement possible de l'écran
     const over = scr.scrollHeight - scr.clientHeight;
     const h = box.getBoundingClientRect().height;
@@ -397,6 +398,48 @@
       .observe(document.getElementById('screen'), { childList: true });
   }
   UI.fitScreen = fitScreen;
+
+  /* ---------- clavier d'Android (ou de l'iPad) ouvert ----------
+     La page rétrécit au-dessus du clavier : on peut alors faire défiler chaque écran jusqu'en bas,
+     et la case où l'on écrit reste toujours visible. Clavier fermé : rien ne change. */
+  const isField = e => e && e.matches && e.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, [contenteditable=""], [contenteditable=true]');
+  function showField() {
+    const f = document.activeElement;
+    if (!isField(f) || !document.body.classList.contains('kb-open')) return;
+    const r = f.getBoundingClientRect(), vh = window.visualViewport ? visualViewport.height : innerHeight;
+    if (r.top < 60 || r.bottom > vh - 10) f.scrollIntoView({ block: f.tagName === 'TEXTAREA' && r.height > vh * .5 ? 'start' : 'center', behavior: 'smooth' });
+  }
+  function setKb(open) {
+    if (document.body.classList.contains('kb-open') === !!open) return;
+    document.body.classList.toggle('kb-open', !!open);
+    fitScreenSoon();
+    if (open) { setTimeout(showField, 120); setTimeout(showField, 450); }
+  }
+  // l'appli Android prévient quand le clavier s'ouvre ou se ferme
+  window.AS_kb = setKb;
+  // sans cette information (ancienne appli, navigateur) : on le devine
+  document.addEventListener('focusin', e => {
+    if (!isField(e.target)) return;
+    if (window.AfterSchoolNative && window.AS_kbNative) return;
+    setTimeout(() => {
+      const vv = window.visualViewport;
+      const shrunk = vv ? vv.height < screen.height * .72 && vv.height < innerHeight + 1 : innerHeight < screen.height * .72;
+      if (shrunk || !vv || vv.height < innerHeight - 80) setKb(true);
+      showField();
+    }, 380);
+  });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!isField(document.activeElement) && !window.AS_kbNative) setKb(false); }, 150));
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => {
+    if (window.AS_kbNative) return;
+    const kb = visualViewport.height < innerHeight - 80 || (isField(document.activeElement) && visualViewport.height < screen.height * .72);
+    // iPad / iPhone : la page ne rétrécit pas, on réserve la place du clavier en bas
+    document.documentElement.style.setProperty('--kb-h', Math.max(0, innerHeight - visualViewport.height) + 'px');
+    setKb(kb);
+    if (kb) showField();
+  });
+  addEventListener('resize', () => { if (document.body.classList.contains('kb-open')) setTimeout(showField, 60); });
+  const nativeKb = window.AS_kb;
+  window.AS_kb = open => { window.AS_kbNative = true; nativeKb(open); };
   /* une zone de taille fixe (onglet…) dont le contenu déborde : ses enfants sont réduits pour tenir */
   UI.fitBox = function fitBox(box) {
     if (!box) return;

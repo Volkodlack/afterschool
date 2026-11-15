@@ -90,6 +90,8 @@ public class MainActivity extends ComponentActivity {
     private ActivityResultLauncher<String> micPermissionLauncher;
     private ActivityResultLauncher<String> notifPermissionLauncher;
 
+    private boolean keyboardOpen = false;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,9 +150,13 @@ public class MainActivity extends ComponentActivity {
         root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
         // keep the page out of camera cutouts / rounded corners / visible system bars on every device
+        // le clavier d'Android ne doit pas recouvrir la page : elle rétrécit au-dessus de lui et on peut la faire défiler jusqu'en bas
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets i = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
-            v.setPadding(i.left, i.top, i.right, i.bottom);
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(i.left, i.top, i.right, Math.max(i.bottom, ime.bottom));
+            boolean kb = ime.bottom > 0;
+            if (kb != keyboardOpen) { keyboardOpen = kb; js("window.AS_kb&&AS_kb(" + kb + ")"); }
             return WindowInsetsCompat.CONSUMED;
         });
 

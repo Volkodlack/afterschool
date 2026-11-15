@@ -81,12 +81,26 @@
       if (res.image) { image = res.image; imageChanged = true; preview.style.display = ''; preview.querySelector('img').src = image; }
       const text = (res.text || '').trim();
       if (text) {
-        ta.value = text;
-        setType(FR.guessType(text));
-        UI.toast('Texte lu ! Vérifie-le avant d\'enregistrer.');
+        const raw = OcrFix.clean(text);
+        ta.value = raw; setType(FR.guessType(raw));
+        // l'IA corrige les accents, apostrophes et lettres mal lues
+        const m = UI.modal(html`<div style="text-align:center"><div class="spinner"></div><h2>✨ Je corrige le texte…</h2><p class="muted">accents, apostrophes, lettres mal lues</p></div>`, { locked: true });
+        OcrFix.fix(raw, st.type).then(r => {
+          if (m.isConnected) UI.closeModal();
+          ta.value = r.text; setType(FR.guessType(r.text));
+          showOrig(r.ai ? text : null);
+          UI.toast(r.ai ? '✨ Texte corrigé par l\'IA : vérifie-le avant d\'enregistrer.' : 'Texte lu ! Vérifie-le avant d\'enregistrer.');
+        });
       } else {
         UI.toast(res.ocrError ? 'Lecture automatique indisponible : écris le texte' : 'Je n\'ai pas trouvé de texte, écris-le à la main');
       }
+    }
+    /* le texte brut de la photo reste disponible si la correction ne convient pas */
+    function showOrig(orig) {
+      let b = wrap.querySelector('[data-a=orig]');
+      if (!orig) { if (b) b.remove(); return; }
+      if (!b) { b = el(`<button class="pix-btn small wood" data-a="orig" style="margin-top:6px">↩︎ Remettre le texte lu sur la photo</button>`); ta.after(b); }
+      b.onclick = () => { ta.value = orig; setType(FR.guessType(orig)); b.remove(); UI.toast('Texte d\'origine remis'); };
     }
     function onProcessing() {
       UI.modal(html`<div style="text-align:center"><div class="spinner"></div><h2>Je lis la fiche…</h2></div>`, { locked: true });

@@ -109,13 +109,20 @@
       UI.closeAllModals();
       if (!res) return;
       if (res.image) { image = res.image; imageChanged = true; prev.style.display = ''; prev.querySelector('img').src = image; }
-      const lines = (res.text || '').split('\n').map(l => l.trim());
+      if ((res.text || '').trim()) {
+        const raw = OcrFix.clean(res.text);
+        const m = UI.modal(html`<div style="text-align:center"><div class="spinner"></div><h2>✨ Je corrige la poésie…</h2><p class="muted">accents, apostrophes, lettres mal lues</p></div>`, { locked: true });
+        OcrFix.fix(raw, 'poesie').then(r => { if (m.isConnected) UI.closeModal(); fill(r.text, r.ai); });
+      } else fill('', false);
+    };
+    const fill = (txt, byAi) => {
+      const lines = (txt || '').split('\n').map(l => l.trim());
       if (lines.filter(Boolean).length) {
         // first short line is often the title
         const first = lines.find(Boolean);
         if (!w.querySelector('[data-f=title]').value && first && first.length < 40 && !/[.,;:!?]$/.test(first)) { w.querySelector('[data-f=title]').value = first; lines.splice(lines.indexOf(first), 1); }
         ta.value = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-        UI.toast('Texte lu ! Vérifie les vers et les strophes.');
+        UI.toast(byAi ? '✨ Poésie corrigée par l\'IA : vérifie les vers et les strophes.' : 'Texte lu ! Vérifie les vers et les strophes.');
       } else UI.toast('Je n\'ai pas trouvé de texte : écris-le à la main');
     };
     const onProc = () => UI.modal(html`<div style="text-align:center"><div class="spinner"></div><h2>Je lis la poésie…</h2></div>`, { locked: true });

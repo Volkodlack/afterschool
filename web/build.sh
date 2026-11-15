@@ -35,5 +35,7 @@ API=$(grep -o 'AS_REQUIRED_NATIVE_API = [0-9]*' ../app/src/main/assets/js/update
 SHA=$(sha256sum _site/ota/bundle.zip | cut -d' ' -f1)
 printf '{"build": %s, "nativeApi": %s, "zip": "ota/bundle.zip", "sha256": "%s", "size": %s}\n' "$BUILD" "$API" "$SHA" "$(stat -c %s _site/ota/bundle.zip)" > _site/ota/version.json
 cat _site/ota/version.json
+# tableau de bord privé de Maxime (accès protégé par les règles Firestore)
+cp admin.html _site/admin.html
 touch _site/.nojekyll
 du -sh _site
