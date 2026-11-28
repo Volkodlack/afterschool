@@ -230,6 +230,11 @@
       ws.forEach(w => { const k = w.toLowerCase(); const s = data.stats.words[k] || { ok: 0, err: 0, seen: 0, last: 0, hist: [] }; s.stage = 3; s.conf = 2; s.learn = 2; s.last = Date.now(); data.stats.words[k] = s; });
       save(true);
     },
+    /* le parent remet des mots au début du parcours (Découverte) ; les compteurs et les cartes déjà gagnées sont gardés */
+    resetWords(ws) {
+      ws.forEach(w => { const s = data.stats.words[w.toLowerCase()]; if (!s) return; s.stage = 0; s.learn = 0; s.conf = 0; s.confAt = 0; s.hist = []; });
+      save(true);
+    },
     listMastery(l) {
       if (!l.words.length) return 0;
       return l.words.reduce((a, w) => a + this.mastery(w), 0) / (l.words.length * 3);

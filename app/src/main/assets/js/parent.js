@@ -67,6 +67,14 @@
     show(tab);
   });
 
+  /* remettre les mots d'une liste en « Découverte » (ex. mauvaise note à la dictée) sans toucher aux cartes gagnées */
+  async function resetList(l, done) {
+    if (!(await UI.confirm(`Remettre les ${l.words.length} mots de « ${l.title} » en Découverte ? Ils repasseront par toutes les étapes du parcours. Les cartes et les récompenses déjà gagnées sont gardées.`, 'Oui, retravailler', 'Annuler'))) return;
+    Store.resetWords(l.words);
+    SFX.play('good'); UI.toast('Les mots sont repassés en Découverte 🌱');
+    if (done) done();
+  }
+
   function mots(body) {
     const lists = Store.lists();
     body.appendChild(el(html`<div class="row"><h2 style="margin:0">Listes de mots</h2><span class="spacer"></span>
@@ -75,9 +83,11 @@
     if (!lists.length) body.appendChild(el('<p class="muted">Ajoutez la liste de mots de la semaine : elle apparaîtra tout de suite dans les jeux.</p>'));
     lists.forEach((l, i) => {
       const r = el(html`<div class="list-row"><div class="grow"><div class="t">${esc(l.title)} ${i === 0 ? '<span class="sheet-type t-texte">en cours</span>' : ''}</div>
-        <div class="s">${l.words.length} mots · ${esc(l.words.join(', '))}</div></div>
-        <button class="pix-btn small wood">${Pixel.svg('pencil')} Modifier</button></div>`);
-      r.querySelector('button').onclick = () => UI.go('listEdit', { listId: l.id });
+        <div class="s">${l.words.length} mots · Maîtrise ${Math.round(Store.listMastery(l) * 100)} % · ${esc(l.words.join(', '))}</div></div>
+        <button class="pix-btn small gold" data-a="reset" title="Remettre les mots en Découverte">↺ Retravailler</button>
+        <button class="pix-btn small wood" data-a="edit">${Pixel.svg('pencil')} Modifier</button></div>`);
+      r.querySelector('[data-a=edit]').onclick = () => UI.go('listEdit', { listId: l.id });
+      r.querySelector('[data-a=reset]').onclick = () => resetList(l, () => { body.innerHTML = ''; mots(body); });
       body.appendChild(r);
     });
     body.appendChild(el('<p class="muted" style="font-size:clamp(14px,2vmin,18px)">La liste la plus récente est celle proposée sur l\'écran d\'accueil. La révision mélange les mots de toutes les listes.</p>'));
